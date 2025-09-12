@@ -1,0 +1,18 @@
+first, i want to test the engine,
+by making a big fancy remake of my snake game with A* (a star) pathfinding, but way better.
+
+(possible sidequest where i implement the this: https://graphics.cs.utah.edu/research/projects/avbd/)
+
+then i want to make a real playable game,
+first idea i had, was a game similar to bad piggies,
+where you assemble a vehicle in a fun puzzle/engineering type
+coolness.
+
+(possible sidequest where i implement skeletal animations)
+
+then, i make absolute mania, 
+a game all about dynamic gameplay, where you design your own weapons,
+and the main objective is to encourage as much creative problem solving as possible,
+by making sure there are MANY ways to solve a problem, and only hinting to the player how to do it.
+
+i also want it to be a vr game, but that can come after i actually make it fun

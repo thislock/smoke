@@ -1,0 +1,8 @@
+
+[workspace]
+members = [ 
+  "main",
+  "trick", "window_solver",
+]
+
+resolver = "2" 

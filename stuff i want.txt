@@ -1,0 +1,13 @@
+i want a 3d graphics engine capable of editing anything in real time,
+this includes models, logic, lighting, and textures,
+going between editing and playing should be seemless, and easy requiring no more than a button press.
+
+i also want a decent effect system, 3d fire, lightning, water dripping, particles
+just some spice to design, that'll make everything look more alive
+
+ideally, also:
+(bonus stuff that would be cool, but could easily creep up on me, so are low priority)
+i would want a custom wrapper i could use to easily port any games to other platforms *note, mostly solved by using wgpu, allowing fallback to webasm/opengl/vulkan/metal*
+auto benchmarking to determine graphics settings, switching api's automatically, for example:
+older platforms may have better opengl performance than vulkan, so the idea is that it will autodetect
+that the performance is better, or maybe just more stable, and switch over before the game fully loads
