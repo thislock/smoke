@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 wgpu = "26.0.1"
+display = { path = "../display" }
