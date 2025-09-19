@@ -1,6 +1,5 @@
 
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
-use crate::RenderSurface;
 
 // contains the unsafe impl as much as possible by putting it in this module
 
@@ -10,16 +9,19 @@ pub struct SdlHandle {
   pub event_pump: sdl3::EventPump,
 }
 
-// unsafe impl Send for SdlHandle {}
-// unsafe impl Sync for SdlHandle {}
+unsafe impl Send for SdlHandle {}
+unsafe impl Sync for SdlHandle {}
 
 impl RenderSurface for SdlHandle {
-  fn get_display(&self) -> crate::DisplayResult {
+  
+  fn get_display(&self) {
     self.sdl_window.display_handle()
   }
-  fn get_window(&self) -> crate::WindowResult {
+
+  fn get_window(&self) {
     self.sdl_window.window_handle()
   }
+
   fn new() -> anyhow::Result<Self> {
 
     let sdl_context = sdl3::init()?;

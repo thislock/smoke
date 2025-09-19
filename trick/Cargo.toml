@@ -1,10 +1,9 @@
 [workspace]
 
-members = [ 
+members = [ "engine_lord", 
   "rendering_solver", 
   "scene_manager", 
-  "update_manager", 
-  "display",
+  "update_manager",
 ]
 
 resolver = "2" 
