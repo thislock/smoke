@@ -1,9 +1,12 @@
-[workspace]
+[package]
+name = "trick"
+version = "0.1.0"
+edition = "2024"
 
-members = [ "engine_lord", 
-  "rendering_solver", 
-  "scene_manager", 
-  "update_manager",
-]
+[lib]
 
-resolver = "2" 
+[dependencies]
+anyhow = "1.0.100"
+raw-window-handle = "0.6.2"
+sdl3 = {version = "0.15.1", features = ["raw-window-handle"]}
+wgpu = "26.0.1"

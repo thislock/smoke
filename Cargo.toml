@@ -1,6 +1,5 @@
 
 [workspace]
-members = ["main"]
-exclude = ["trick"]
+members = ["trick", "run"]
 
 resolver = "2" 

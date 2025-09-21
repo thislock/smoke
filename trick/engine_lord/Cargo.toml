@@ -1,6 +1,0 @@
-[package]
-name = "engine_lord"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
