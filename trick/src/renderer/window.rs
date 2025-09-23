@@ -1,7 +1,38 @@
 
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 
+use crate::update_manager::{Task, TaskMessage};
+
 // contains the unsafe impl as much as possible by putting it in this module
+
+pub struct SdlTask {
+  handle: Option<SdlHandle>,
+}
+
+impl Default for SdlTask {
+  fn default() -> Self {
+    Self { handle: None }
+  }
+}
+
+impl Task for SdlTask {
+  fn start(&mut self) -> anyhow::Result<&'static str> {
+    self.handle = Some(SdlHandle::new()?);
+    Ok("sdl3 task")
+  }
+  fn end(&mut self) -> anyhow::Result<()> {
+    Ok(())
+  }
+
+  fn update(&self, messages: &[crate::update_manager::TaskMessage]) -> anyhow::Result<()> {
+    for msg in messages {
+      match msg {
+        TaskMessage::Print => println!("WOWIE ZOWIE"),
+      }
+    }
+    Ok(())
+  }
+}
 
 pub struct SdlHandle {
   pub sdl_context: sdl3::Sdl,
