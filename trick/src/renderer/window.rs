@@ -1,7 +1,6 @@
-
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 
-use crate::update_manager::{Task, TaskMessage};
+use crate::update_manager::{Task, TaskCommand, TaskResult};
 
 // contains the unsafe impl as much as possible by putting it in this module
 
@@ -21,16 +20,29 @@ impl Task for SdlTask {
     Ok("sdl3 task")
   }
   fn end(&mut self) -> anyhow::Result<()> {
+    self.handle = None;
     Ok(())
   }
 
-  fn update(&self, messages: &[crate::update_manager::TaskMessage]) -> anyhow::Result<()> {
+  fn update(&mut self, messages: &[TaskCommand]) -> TaskResult {
     for msg in messages {
       match msg {
-        TaskMessage::Print => println!("WOWIE ZOWIE"),
+        TaskCommand::Print => println!("WOWIE ZOWIE"),
       }
     }
-    Ok(())
+
+    if let Some(sdl_handle) = &mut self.handle {
+      for event in sdl_handle.event_pump.poll_iter() {
+        match event {
+          sdl3::event::Event::Quit { .. } => {
+            return TaskResult::RequestShutdown;
+          }
+          _ => {}
+        }
+      }
+    }
+
+    TaskResult::Ok
   }
 }
 
@@ -46,7 +58,6 @@ unsafe impl Sync for SdlHandle {}
 const DEFAULT_RESOLUTION: [u32; 2] = [600, 800];
 
 impl SdlHandle {
-  
   fn get_display(&self) -> anyhow::Result<raw_window_handle::DisplayHandle<'_>> {
     let display_handle = self.sdl_window.display_handle()?;
     return Ok(display_handle);
@@ -58,11 +69,10 @@ impl SdlHandle {
   }
 
   fn new() -> anyhow::Result<Self> {
-
     let sdl_context = sdl3::init()?;
     let video_subsystem = sdl_context.video()?;
     let window = video_subsystem
-      .window("sdl window", DEFAULT_RESOLUTION[0],DEFAULT_RESOLUTION[1])
+      .window("sdl window", DEFAULT_RESOLUTION[0], DEFAULT_RESOLUTION[1])
       .position_centered()
       .resizable()
       .metal_view()
@@ -75,6 +85,5 @@ impl SdlHandle {
       sdl_window: window,
       event_pump,
     })
-
   }
 }
