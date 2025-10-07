@@ -13,6 +13,7 @@ fn main() -> anyhow::Result<()> {
     match update_result {
       UpdateReturn::Ok => {}
       UpdateReturn::Shutdown => {
+        println!("soknfgosfngontdipg");
         return Ok(());
       }
       _ => {}

@@ -1,7 +1,8 @@
 use std::sync::{Arc, Mutex};
 
 pub enum TaskCommand {
-  Print,
+  Report,
+  LinkChannel(&'static str),
 }
 
 pub enum OutgoingTaskMessage {
@@ -25,6 +26,43 @@ pub trait Task {
   fn end(&mut self) -> anyhow::Result<()>;
 }
 
+use flume::{Receiver, Sender};
+
+pub struct TaskChannel<T> {
+  sender: Sender<T>,
+  receiver: Receiver<T>,
+}
+
+impl<T> TaskChannel<T> {
+  /// Create a new unbounded message channel
+  pub fn new() -> Self {
+    let (sender, receiver) = flume::unbounded();
+    Self { sender, receiver }
+  }
+
+  /// Send a message (thread-safe)
+  pub fn send(&self, msg: T) -> Result<(), ()> {
+    self.sender.send(msg).map_err(|_| ())
+  }
+
+  /// Receive a message (blocking)
+  pub fn recv(&self) -> Option<T> {
+    self.receiver.recv().ok()
+  }
+
+  /// Non-blocking try receive
+  pub fn try_recv(&self) -> Option<T> {
+    self.receiver.try_recv().ok()
+  }
+
+  /// Async receive (if using async runtimes)
+  pub async fn recv_async(&self) -> Option<T> {
+    self.receiver.recv_async().await.ok()
+  }
+
+}
+
+
 #[derive(Clone)]
 pub struct TaskContainer {
   task: Arc<Mutex<dyn Task>>,
@@ -35,9 +73,11 @@ impl Drop for TaskContainer {
   fn drop(&mut self) {
     let mut error_msg = String::from("failed to drop: ");
     error_msg.push_str(&self.task_label);
+    let error_msg: &str = &error_msg;
 
-    let mut task_lock = self.task.lock().expect(&error_msg);
-    task_lock.end().expect(&error_msg);
+    // executes the tasks "destructor" after unlocking
+    let mut task_lock = self.task.lock().expect(error_msg);
+    task_lock.end().expect(error_msg);
   }
 }
 
@@ -100,7 +140,7 @@ impl UpdateManager {
 
   pub fn update_tasks(&self) -> UpdateReturn {
     for task in &self.tasks {
-      let task_result = task.run(&[TaskCommand::Print]);
+      let task_result = task.run(&[TaskCommand::Report]);
       match task_result {
         TaskResult::ErrFatal(msg) => println!(
           "task {} returned with fatal error: {}",

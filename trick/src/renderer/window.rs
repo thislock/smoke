@@ -15,23 +15,32 @@ impl Default for SdlTask {
 }
 
 impl Task for SdlTask {
+  
   fn start(&mut self) -> anyhow::Result<&'static str> {
     self.handle = Some(SdlHandle::new()?);
-    Ok("sdl3 task")
+    Ok("sdl3 desktop task")
   }
+
   fn end(&mut self) -> anyhow::Result<()> {
     self.handle = None;
     Ok(())
   }
 
   fn update(&mut self, messages: &[TaskCommand]) -> TaskResult {
+
     for msg in messages {
       match msg {
-        TaskCommand::Print => println!("WOWIE ZOWIE"),
+        TaskCommand::Report => println!("BEEP BOOP, DOING WINDOW UPDATE THINGS."),
+        TaskCommand::LinkChannel(_) => todo!(),
       }
     }
 
-    if let Some(sdl_handle) = &mut self.handle {
+    // change this to unwrap_unchecked later, once that becomes a possible optimization
+    // but with only a few tasks, for now it's better to have the error handled properly
+    // let mut sdl_handle = unsafe { self.handle.as_mut().unwrap_unchecked() }; 
+    let mut sdl_handle = { self.handle.as_mut().unwrap() }; 
+    {
+
       for event in sdl_handle.event_pump.poll_iter() {
         match event {
           sdl3::event::Event::Quit { .. } => {
@@ -40,6 +49,7 @@ impl Task for SdlTask {
           _ => {}
         }
       }
+
     }
 
     TaskResult::Ok
