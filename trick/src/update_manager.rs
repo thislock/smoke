@@ -1,19 +1,30 @@
-use std::sync::{Arc, Mutex};
+use crate::update_manager::container::TaskPermission;
 
+
+pub mod channel;
+pub mod container;
+
+// TODO: figure out how channels are sent and recieved upon task initialisation 
 pub enum TaskCommand {
   Report,
   LinkChannel(&'static str),
 }
 
 pub enum OutgoingTaskMessage {
-  Yell(TaskCommand), // send a command to every other task
+  /// send a command to every other task
+  Yell(TaskCommand),
 }
 
 pub enum TaskResult {
-  ErrFatal(&'static str), // system error: the entire program needs to go down.
-  ErrReload,              // logic error: just restart the task.
-  Ok,                     // success: nothing to send
-  OkMessage(OutgoingTaskMessage), // success: send a message to another task
+  /// system error: the entire program or task needs to go down.
+  ErrFatal(&'static str),
+  /// logic error: just restart the task.
+  ErrReload,              
+  /// success: nothing of note to send
+  Ok,
+  /// success: send a message to another task
+  OkMessage(OutgoingTaskMessage), 
+  /// request shutdown of the entire program
   RequestShutdown,
 }
 
@@ -26,115 +37,24 @@ pub trait Task {
   fn end(&mut self) -> anyhow::Result<()>;
 }
 
-use flume::{Receiver, Sender};
-
-pub struct TaskChannel<T> {
-  sender: Sender<T>,
-  receiver: Receiver<T>,
-}
-
-impl<T> TaskChannel<T> {
-  /// Create a new unbounded message channel
-  pub fn new() -> Self {
-    let (sender, receiver) = flume::unbounded();
-    Self { sender, receiver }
-  }
-
-  /// Send a message (thread-safe)
-  pub fn send(&self, msg: T) -> Result<(), ()> {
-    self.sender.send(msg).map_err(|_| ())
-  }
-
-  /// Receive a message (blocking)
-  pub fn recv(&self) -> Option<T> {
-    self.receiver.recv().ok()
-  }
-
-  /// Non-blocking try receive
-  pub fn try_recv(&self) -> Option<T> {
-    self.receiver.try_recv().ok()
-  }
-
-  /// Async receive (if using async runtimes)
-  pub async fn recv_async(&self) -> Option<T> {
-    self.receiver.recv_async().await.ok()
-  }
-
-}
-
-
-#[derive(Clone)]
-pub struct TaskContainer {
-  task: Arc<Mutex<dyn Task>>,
-  task_label: &'static str,
-}
-
-impl Drop for TaskContainer {
-  fn drop(&mut self) {
-    let mut error_msg = String::from("failed to drop: ");
-    error_msg.push_str(&self.task_label);
-    let error_msg: &str = &error_msg;
-
-    // executes the tasks "destructor" after unlocking
-    let mut task_lock = self.task.lock().expect(error_msg);
-    task_lock.end().expect(error_msg);
-  }
-}
-
-impl TaskContainer {
-  pub fn new<T: Task + 'static>(mut task: T) -> anyhow::Result<Self>
-  where
-    T: Sized,
-  {
-    let mut label = "BLANK TASK LABEL";
-
-    if let Ok(task_label) = task.start() {
-      label = task_label;
-    }
-
-    Ok(Self {
-      task: Arc::new(Mutex::new(task)),
-      task_label: label,
-    })
-  }
-
-  pub fn reload_task(&self) -> anyhow::Result<()> {
-    let mut task_lock = self.task.lock().unwrap();
-    task_lock.end()?;
-    task_lock.start()?;
-    Ok(())
-  }
-
-  pub fn run(&self, messages: &[TaskCommand]) -> TaskResult {
-    if let Ok(mut task_lock) = self.task.lock() {
-      return task_lock.update(messages);
-    } else {
-      return TaskResult::ErrFatal("FAILED TO UNLOCK MUTEX");
-    }
-
-    TaskResult::Ok
-  }
-}
-
-pub struct UpdateManager {
-  tasks: Vec<TaskContainer>,
-}
-
 pub enum UpdateReturn {
   Ok,
   Shutdown,
 }
+
+pub struct UpdateManager {
+  tasks: Vec<container::TaskContainer>,
+}
+
 
 impl UpdateManager {
   pub fn new() -> anyhow::Result<Self> {
     Ok(Self { tasks: Vec::new() })
   }
 
-  pub fn add_task<GenericTask: Task + 'static>(&mut self, task: GenericTask) -> anyhow::Result<()> {
-    let task = TaskContainer::new(task)?;
-
+  pub fn add_task<GenericTask: Task + 'static>(&mut self, task: GenericTask, perms: container::TaskPermission) -> anyhow::Result<()> {
+    let task = container::TaskContainer::new(task, perms)?;
     self.tasks.push(task);
-
     Ok(())
   }
 
@@ -144,16 +64,20 @@ impl UpdateManager {
       match task_result {
         TaskResult::ErrFatal(msg) => println!(
           "task {} returned with fatal error: {}",
-          task.task_label, msg
+          task.get_label(), msg
         ),
         TaskResult::ErrReload => task.reload_task().unwrap(),
         TaskResult::Ok => {}
-        TaskResult::OkMessage(out_msg) => {
+        TaskResult::OkMessage(_out_msg) => {
           // TODO: work on outgoing messages.
         }
 
         TaskResult::RequestShutdown => {
-          return UpdateReturn::Shutdown;
+          if *task.get_permission() == TaskPermission::Root {
+            return UpdateReturn::Shutdown;
+          } else {
+            // do somethin idk
+          }
         }
       }
     }

@@ -38,9 +38,10 @@ impl Task for SdlTask {
     // change this to unwrap_unchecked later, once that becomes a possible optimization
     // but with only a few tasks, for now it's better to have the error handled properly
     // let mut sdl_handle = unsafe { self.handle.as_mut().unwrap_unchecked() }; 
-    let mut sdl_handle = { self.handle.as_mut().unwrap() }; 
     {
-
+      
+      let sdl_handle = { self.handle.as_mut().unwrap() }; 
+      
       for event in sdl_handle.event_pump.poll_iter() {
         match event {
           sdl3::event::Event::Quit { .. } => {
