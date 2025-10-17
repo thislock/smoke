@@ -23,6 +23,10 @@ impl TaskChannel {
     self.receiver.recv().ok()
   }
 
+  pub fn downcast_recv<T: 'static>(&self) -> Option<T> {
+    self.receiver.recv().ok()?.downcast::<T>().ok().map(|b| *b)
+  }
+
   /// Non-blocking try receive
   pub fn try_recv(&self) -> Option<Message> {
     self.receiver.try_recv().ok()
