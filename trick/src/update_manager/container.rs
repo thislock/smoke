@@ -1,6 +1,5 @@
-
 use std::sync::{Arc, Mutex};
-use crate::update_manager;
+use crate::update_manager::{self, channel::ChannelRegistry};
 
 #[derive(Clone, PartialEq)]
 pub enum TaskPermission {
@@ -27,14 +26,18 @@ impl Drop for TaskContainer {
 }
 
 impl TaskContainer {
-  pub fn new<T: update_manager::Task + 'static>(mut task: T, permissions: TaskPermission) -> anyhow::Result<Self>
+  pub fn new<T: update_manager::Task + 'static>(
+    mut task: T,
+    permissions: TaskPermission,
+    channel_registry: ChannelRegistry,
+  ) -> anyhow::Result<Self>
   where
     T: Sized,
   {
     let mut label = "BLANK TASK LABEL";
 
-    if let Ok(task_label) = task.start() {
-      label = task_label;
+    if let Ok(post_init) = task.start(channel_registry) {
+      label = post_init.name;
     }
 
     Ok(Self {
@@ -52,16 +55,16 @@ impl TaskContainer {
     return self.task_label;
   }
 
-  pub fn reload_task(&self) -> anyhow::Result<()> {
+  pub fn reload_task(&self, channel_registry: ChannelRegistry) -> anyhow::Result<()> {
     let mut task_lock = self.task.lock().unwrap();
     task_lock.end()?;
-    task_lock.start()?;
+    task_lock.start(channel_registry)?;
     Ok(())
   }
 
-  pub fn run(&self, messages: &[update_manager::TaskCommand]) -> update_manager::TaskResult {
+  pub fn run(&self) -> update_manager::TaskResult {
     if let Ok(mut task_lock) = self.task.lock() {
-      return task_lock.update(messages);
+      return task_lock.update();
     } else {
       return update_manager::TaskResult::ErrFatal("FAILED TO UNLOCK MUTEX");
     }

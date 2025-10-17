@@ -1,47 +1,72 @@
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 
-use crate::update_manager::{Task, TaskCommand, TaskResult};
+use crate::update_manager::{self, channel, Task, TaskResult};
 
 // contains the unsafe impl as much as possible by putting it in this module
 
 pub struct SdlTask {
   handle: Option<SdlHandle>,
+  channel_reg: Option<channel::ChannelRegistry>,
+  renderer_channel: Option<channel::TaskChannel<channel::Message>>,
 }
 
 impl Default for SdlTask {
   fn default() -> Self {
-    Self { handle: None }
+    Self { handle: None, channel_reg: None, renderer_channel: None }
+  }
+}
+
+impl SdlTask {
+  fn sync_renderer_channel<'a>(&'a mut self) -> &'a mut Option<channel::TaskChannel<channel::Message>> {
+    
+    if let Some(_renderer_channel) = &mut self.renderer_channel {
+      return &mut self.renderer_channel;
+    }
+
+    if let Some(channel_registry) = self.channel_reg.clone() {
+      let channel_request =channel_registry
+        .get_or_create(crate::renderer::renderer::RENDERER_CHANNEL);
+      
+      if let Some(channel_accepted) = channel_request {
+        self.renderer_channel = Some(channel_accepted);
+      }
+    }
+
+    return &mut self.renderer_channel;
   }
 }
 
 impl Task for SdlTask {
-  
-  fn start(&mut self) -> anyhow::Result<&'static str> {
+  fn start(&mut self, channel_registry: channel::ChannelRegistry) -> anyhow::Result<update_manager::PostInit> {
     self.handle = Some(SdlHandle::new()?);
-    Ok("sdl3 desktop task")
+    self.channel_reg = Some(channel_registry);
+    let _ = self.sync_renderer_channel();
+    return Ok(update_manager::PostInit {
+      name: "sdl3 desktop task",
+      requests: &[],
+    });
   }
 
   fn end(&mut self) -> anyhow::Result<()> {
+    // set to none, dropping everything
     self.handle = None;
     Ok(())
   }
 
-  fn update(&mut self, messages: &[TaskCommand]) -> TaskResult {
+  fn update(&mut self) -> TaskResult {
 
-    for msg in messages {
-      match msg {
-        TaskCommand::Report => println!("BEEP BOOP, DOING WINDOW UPDATE THINGS."),
-        TaskCommand::LinkChannel(_) => todo!(),
-      }
+    // recieve updates from the renderer channel
+    if let Some(renderer_channel) = self.sync_renderer_channel() {
+      println!("IT FICKING WORKS LEZ GOOOOOOOOOOOO");
     }
 
-    // change this to unwrap_unchecked later, once that becomes a possible optimization
-    // but with only a few tasks, for now it's better to have the error handled properly
-    // let mut sdl_handle = unsafe { self.handle.as_mut().unwrap_unchecked() }; 
+    // sdl handle mutex scope START
     {
-      
-      let sdl_handle = { self.handle.as_mut().unwrap() }; 
-      
+      // change this to unwrap_unchecked later, once that becomes a possible optimization
+      // but with only a few tasks, for now it's better to have the error handled properly
+      // let mut sdl_handle = unsafe { self.handle.as_mut().unwrap_unchecked() };
+      let sdl_handle = { self.handle.as_mut().unwrap() };
+
       for event in sdl_handle.event_pump.poll_iter() {
         match event {
           sdl3::event::Event::Quit { .. } => {
@@ -50,8 +75,8 @@ impl Task for SdlTask {
           _ => {}
         }
       }
-
     }
+    // sdl handle mutex scope END
 
     TaskResult::Ok
   }

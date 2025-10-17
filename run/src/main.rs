@@ -1,12 +1,15 @@
-
-
 fn main() -> anyhow::Result<()> {
   let mut program = trick::update_manager::UpdateManager::new()?;
-  
+
   use trick::*;
   program.add_task(
-    renderer::window::SdlTask::default(), 
-    update_manager::container::TaskPermission::Root
+    renderer::window::SdlTask::default(),
+    update_manager::container::TaskPermission::Root,
+  )?;
+
+  program.add_task(
+    renderer::renderer::RendererTask::default(),
+    update_manager::container::TaskPermission::Root,
   )?;
 
   loop {
@@ -19,5 +22,4 @@ fn main() -> anyhow::Result<()> {
       }
     }
   }
-
 }
