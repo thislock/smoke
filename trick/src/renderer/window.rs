@@ -1,6 +1,10 @@
 use raw_window_handle::{HasDisplayHandle, HasRawWindowHandle, HasWindowHandle};
 
-use crate::update_manager::{self, channel::{self, Message}, Task, TaskResult};
+use crate::update_manager::{
+  self,
+  channel::{self, Message},
+  Task, TaskResult,
+};
 
 // contains the unsafe impl as much as possible by putting it in this module
 
@@ -60,24 +64,27 @@ impl Task for SdlTask {
   }
 
   fn update(&mut self) -> TaskResult {
-    
     // i know this is terrible, but i just want my stupid code to work, and daddy borrow checker says no.
     let mut raw_window = None;
     if let Some(sdl_handle) = &self.handle {
-      raw_window = Some(sdl_handle
-        .get_window()
-        .expect("failed to get raw window handle"));
+      raw_window = Some(
+        sdl_handle
+          .get_window()
+          .expect("failed to get raw window handle"),
+      );
     }
-    
+
     // recieve updates from the renderer channel
     if let Some(renderer_channel) = self.sync_renderer_channel() {
       use crate::renderer::renderer::*;
-      
+
       while let Some(message) = renderer_channel.try_recv() {
         match message {
           Message::WindowHandle(window_handle) => {
             if let Some(window_handle) = raw_window {
-              renderer_channel.send(Message::WindowHandle(window_handle.0)).expect("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+              renderer_channel
+                .send(Message::WindowHandle(window_handle.0))
+                .expect("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
             }
             println!("OJSFNGOJNSFJONGJOSNFOJGNJOSFJOGNOSFNGJNSFNGOIUNSFONG")
           }

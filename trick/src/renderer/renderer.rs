@@ -1,4 +1,10 @@
-use crate::{renderer::window::LocalWindowHandle, update_manager::{channel::{self, Message}, PostInit, Task, TaskResult}};
+use crate::{
+  renderer::window::LocalWindowHandle,
+  update_manager::{
+    channel::{self, Message},
+    PostInit, Task, TaskResult,
+  },
+};
 
 pub const RENDERER_CHANNEL: &'static str = "IPEPIFSUIHDFIUHSIHGIHSFUIGHIYWHWRURUURURURURUUR"; // computers don't need clarity
 
@@ -51,22 +57,19 @@ impl Task for RendererTask {
   }
 
   fn update(&mut self) -> TaskResult {
-
     let is_wgpu_initialised = self.wgpu.is_none();
 
     if let Some(channel) = self.sync_renderer_channel() {
       if is_wgpu_initialised {
-        channel
-          .send(channel::Message::RequestWindowHandle)
-          .unwrap();
+        channel.send(channel::Message::RequestWindowHandle).unwrap();
       }
 
       while let Some(message) = channel.try_recv() {
         match message {
           Message::WindowHandle(window_handle) => {
             println!("SONGFBUSFUOIGHGHDSFHUGUHDFUOGHUOFDHUOG YESSSSSSSSSSSSSSSSSSSSSSSS")
-          },
-          _ => {},
+          }
+          _ => {}
         }
         println!("YESYESYESYES")
       }

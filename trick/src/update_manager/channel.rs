@@ -1,72 +1,55 @@
 use flume::{Receiver, Sender};
 
 #[derive(Clone)]
-pub struct TaskChannel {
-  sender: Sender<Message>,
-  receiver: Receiver<Message>,
+pub struct TaskChannel<T> {
+  sender: Sender<T>,
+  receiver: Receiver<T>,
 }
 
-impl TaskChannel {
+impl<T: 'static + Send> TaskChannel<T> {
   pub fn new() -> Self {
     let (sender, receiver) = flume::unbounded();
     Self { sender, receiver }
   }
 
-  pub fn send(&self, msg: Message) -> Result<(), ()> {
-    self.sender.send(msg).map_err(|error| {println!("error: {:?}", error); ()})
+  pub fn send(&self, msg: T) -> Result<(), ()> {
+    self.sender.send(msg).map_err(|error| {
+      println!("error: {:?}", error);
+      ()
+    })
   }
 
   /// Blocking message recieve
-  pub fn recv(&self) -> Option<Message> {
+  pub fn recv(&self) -> Option<T> {
     self.receiver.recv().ok()
   }
 
-  // /// Blocking message recieve
-  // pub fn downcast_recv<T: 'static>(&self) -> Option<Message> {
-  //   self.receiver.recv().ok()?.downcast::<T>().ok().map(|b| *b)
-  // }
-
-  // /// Non-blocking message recieve
-  // pub fn downcast_try_recv<T: 'static>(&self) -> Option<T> {
-  //   self.receiver.recv().ok()?.downcast::<T>().ok().map(|b| *b)
-  // }
-
-  pub fn try_recv(&self) -> Option<Message> {
+  pub fn try_recv(&self) -> Option<T> {
     self.receiver.try_recv().ok()
   }
 
   /// Blocking message recieve
-  pub async fn recv_async(&self) -> Option<Message> {
+  pub async fn recv_async(&self) -> Option<T> {
     self.receiver.recv_async().await.ok()
   }
 }
 
 use std::collections::HashMap;
-use std::any::Any;
 use std::sync::{Arc, Mutex};
 
 type ChannelId = &'static str;
 
-
-//pub type Message = Box<dyn TaskMessage + 'static + Send>;
-
-pub enum Message {
-  WindowHandle(raw_window_handle::RawWindowHandle),
-  RequestWindowHandle,
-  OOOOOOO,
-}
-
 #[derive(Clone)]
-pub struct ChannelRegistry {
-  inner: Arc<Mutex<HashMap<ChannelId, PendingChannel>>>,
+pub struct ChannelRegistry<T> {
+  inner: Arc<Mutex<HashMap<ChannelId, PendingChannel<T>>>>,
 }
 
-enum PendingChannel {
-  Waiting(TaskChannel),
-  Pending(TaskChannel),
+enum PendingChannel<T> {
+  Waiting(TaskChannel<T>),
+  Pending(TaskChannel<T>),
 }
 
-impl ChannelRegistry {
+impl<T: Send + 'static> ChannelRegistry<T> {
   pub fn new() -> Self {
     Self {
       inner: Arc::new(Mutex::new(HashMap::new())),
@@ -76,7 +59,7 @@ impl ChannelRegistry {
   /// Request or create a channel with the given ID.
   /// - If no other task has requested this ID yet, store it.
   /// - If another task is waiting, link the channels and remove the entry.
-  pub fn get_or_create(&self, id: &'static str) -> Option<TaskChannel> {
+  pub fn get_or_create(&self, id: &'static str) -> Option<TaskChannel<T>> {
     let mut map = self.inner.lock().ok()?;
     println!("ran get or create function");
 

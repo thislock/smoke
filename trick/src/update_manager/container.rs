@@ -22,7 +22,7 @@ impl Drop for TaskContainer {
     // executes the tasks "destructor" after unlocking
 
     // ok this crashes things, so im going to leave it be
-    
+
     // let mut task_lock = self.task.lock().expect(error_msg);
     // task_lock.end().expect(error_msg);
   }
