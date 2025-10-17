@@ -57,7 +57,7 @@ impl Task for SdlTask {
 
     // recieve updates from the renderer channel
     if let Some(renderer_channel) = self.sync_renderer_channel() {
-      println!("IT FICKING WORKS LEZ GOOOOOOOOOOOO");
+      
     }
 
     // sdl handle mutex scope START

@@ -7,32 +7,31 @@ pub struct TaskChannel {
 }
 
 impl TaskChannel {
-  /// Create a new unbounded message channel
   pub fn new() -> Self {
     let (sender, receiver) = flume::unbounded();
     Self { sender, receiver }
   }
 
-  /// Send a message (thread-safe)
   pub fn send<T: 'static + Send>(&self, msg: T) -> Result<(), ()> {
     self.sender.send(Box::new(msg)).map_err(|_| ())
   }
 
-  /// Receive a message (blocking)
+  /// Blocking message recieve
   pub fn recv(&self) -> Option<Message> {
     self.receiver.recv().ok()
   }
-
+  
+  /// Blocking message recieve
   pub fn downcast_recv<T: 'static>(&self) -> Option<T> {
     self.receiver.recv().ok()?.downcast::<T>().ok().map(|b| *b)
   }
-
-  /// Non-blocking try receive
+  
+  /// Non-blocking message recieve
   pub fn try_recv(&self) -> Option<Message> {
     self.receiver.try_recv().ok()
   }
-
-  /// Async receive (if using async runtimes)
+  
+  /// Blocking message recieve
   pub async fn recv_async(&self) -> Option<Message> {
     self.receiver.recv_async().await.ok()
   }
