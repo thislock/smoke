@@ -109,14 +109,14 @@ impl ChannelRegistry {
         id,
         // set it to pending
         PendingChannel::Pending(matching_channel),
-      )?;
+      );
 
       return Some(new_channel);
     } else {
       println!("cached a thingy");
       // First task to request this channel
       let channel = TaskChannel::new();
-      map.insert(id, PendingChannel::Waiting(channel))?;
+      map.insert(id, PendingChannel::Waiting(channel));
 
       return None;
     }
