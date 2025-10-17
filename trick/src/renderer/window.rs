@@ -1,17 +1,14 @@
-use raw_window_handle::{HasDisplayHandle, HasRawWindowHandle, HasWindowHandle};
 
-use crate::update_manager::{
-  self,
-  channel::{self, Message},
-  Task, TaskResult,
-};
+use crate::{renderer::registry::{HardwareMessage, SyncRawWindow}, update_manager::{
+  self, channel, Task, TaskResult
+}};
 
 // contains the unsafe impl as much as possible by putting it in this module
 
 pub struct SdlTask {
   handle: Option<SdlHandle>,
-  channel_reg: Option<channel::ChannelRegistry>,
-  renderer_channel: Option<channel::TaskChannel>,
+  channel_reg: Option<channel::ChannelRegistry<HardwareMessage>>,
+  renderer_channel: Option<channel::TaskChannel<HardwareMessage>>,
 }
 
 impl Default for SdlTask {
@@ -25,7 +22,7 @@ impl Default for SdlTask {
 }
 
 impl SdlTask {
-  fn sync_renderer_channel<'a>(&'a mut self) -> &'a mut Option<channel::TaskChannel> {
+  fn sync_renderer_channel<'a>(&'a mut self) -> &'a mut Option<channel::TaskChannel<HardwareMessage>> {
     if let Some(_renderer_channel) = &mut self.renderer_channel {
       return &mut self.renderer_channel;
     }
@@ -46,7 +43,7 @@ impl SdlTask {
 impl Task for SdlTask {
   fn start(
     &mut self,
-    channel_registry: channel::ChannelRegistry,
+    channel_registry: channel::ChannelRegistry<HardwareMessage>,
   ) -> anyhow::Result<update_manager::PostInit> {
     self.handle = Some(SdlHandle::new()?);
     self.channel_reg = Some(channel_registry);
@@ -76,14 +73,12 @@ impl Task for SdlTask {
 
     // recieve updates from the renderer channel
     if let Some(renderer_channel) = self.sync_renderer_channel() {
-      use crate::renderer::renderer::*;
-
       while let Some(message) = renderer_channel.try_recv() {
         match message {
-          Message::WindowHandle(window_handle) => {
+          HardwareMessage::RequestRawWindowHandle => {
             if let Some(window_handle) = raw_window {
               renderer_channel
-                .send(Message::WindowHandle(window_handle.0))
+                .send(HardwareMessage::RawWindowHandle(window_handle))
                 .expect("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
             }
             println!("OJSFNGOJNSFJONGJOSNFOJGNJOSFJOGNOSFNGJNSFNGOIUNSFONG")
@@ -124,22 +119,21 @@ pub struct SdlHandle {
 unsafe impl Send for SdlHandle {}
 unsafe impl Sync for SdlHandle {}
 
-#[derive(Clone, Copy)]
-pub struct LocalWindowHandle(pub raw_window_handle::RawWindowHandle);
-unsafe impl Send for LocalWindowHandle {}
-
 const DEFAULT_RESOLUTION: [u32; 2] = [600, 800];
 
+use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
+
 impl SdlHandle {
+
   #[allow(unused)]
   fn get_display(&self) -> anyhow::Result<raw_window_handle::DisplayHandle<'_>> {
     let display_handle = self.sdl_window.display_handle()?;
     return Ok(display_handle);
   }
 
-  fn get_window(&self) -> anyhow::Result<LocalWindowHandle> {
+  fn get_window(&self) -> anyhow::Result<SyncRawWindow> {
     let window_handle = self.sdl_window.window_handle()?.as_raw();
-    return Ok(LocalWindowHandle(window_handle));
+    return Ok(SyncRawWindow(window_handle));
   }
 
   fn new() -> anyhow::Result<Self> {

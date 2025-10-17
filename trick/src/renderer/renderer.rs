@@ -1,8 +1,8 @@
 use crate::{
-  renderer::window::LocalWindowHandle,
+  renderer::{registry::HardwareMessage},
   update_manager::{
-    channel::{self, Message},
     PostInit, Task, TaskResult,
+    channel,
   },
 };
 
@@ -10,8 +10,8 @@ pub const RENDERER_CHANNEL: &'static str = "IPEPIFSUIHDFIUHSIHGIHSFUIGHIYWHWRURU
 
 pub struct RendererTask {
   wgpu: Option<WgpuRenderer>,
-  channel_registry: Option<channel::ChannelRegistry>,
-  renderer_channel: Option<channel::TaskChannel>,
+  channel_registry: Option<channel::ChannelRegistry<HardwareMessage>>,
+  renderer_channel: Option<channel::TaskChannel<HardwareMessage>>,
 }
 
 pub enum RendererMessage {
@@ -19,12 +19,12 @@ pub enum RendererMessage {
 }
 
 impl RendererTask {
-  fn sync_renderer_channel<'a>(&'a mut self) -> &'a mut Option<channel::TaskChannel> {
+  fn sync_renderer_channel<'a>(&'a mut self) -> &'a mut Option<channel::TaskChannel<HardwareMessage>> {
     if let Some(_renderer_channel) = &mut self.renderer_channel {
       return &mut self.renderer_channel;
     }
 
-    if let Some(channel_registry) = self.channel_registry.clone() {
+    if let Some(channel_registry) = &self.channel_registry {
       let channel_request = channel_registry.get_or_create(RENDERER_CHANNEL);
 
       if let Some(channel_accepted) = channel_request {
@@ -47,7 +47,7 @@ impl Default for RendererTask {
 }
 
 impl Task for RendererTask {
-  fn start(&mut self, channel_registry: channel::ChannelRegistry) -> anyhow::Result<PostInit> {
+  fn start(&mut self, channel_registry: channel::ChannelRegistry<HardwareMessage>) -> anyhow::Result<PostInit> {
     self.channel_registry = Some(channel_registry);
 
     Ok(PostInit {
@@ -61,17 +61,16 @@ impl Task for RendererTask {
 
     if let Some(channel) = self.sync_renderer_channel() {
       if is_wgpu_initialised {
-        channel.send(channel::Message::RequestWindowHandle).unwrap();
+        channel.send(HardwareMessage::RequestRawWindowHandle).unwrap();
       }
 
       while let Some(message) = channel.try_recv() {
         match message {
-          Message::WindowHandle(window_handle) => {
-            println!("SONGFBUSFUOIGHGHDSFHUGUHDFUOGHUOFDHUOG YESSSSSSSSSSSSSSSSSSSSSSSS")
+          HardwareMessage::RawWindowHandle(raw_window) => {
+            println!("raw window handle gotten");
           }
           _ => {}
         }
-        println!("YESYESYESYES")
       }
     }
 

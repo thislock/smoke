@@ -1,4 +1,4 @@
-use crate::update_manager::{container::TaskPermission};
+use crate::{renderer::registry::HardwareMessage, update_manager::container::TaskPermission};
 
 pub mod channel;
 pub mod container;
@@ -29,7 +29,7 @@ pub enum ManagerMessage {
 }
 
 pub trait Task {
-  fn start(&mut self, channel_registry: channel::ChannelRegistry) -> anyhow::Result<PostInit>;
+  fn start(&mut self, channel_registry: channel::ChannelRegistry<HardwareMessage>) -> anyhow::Result<PostInit>;
   fn update(&mut self) -> TaskResult;
   fn end(&mut self) -> anyhow::Result<()>;
 }
@@ -41,14 +41,14 @@ pub enum UpdateReturn {
 
 pub struct UpdateManager {
   tasks: Vec<container::TaskContainer>,
-  channel_registry: channel::ChannelRegistry,
+  hardware_registry: channel::ChannelRegistry<HardwareMessage>,
 }
 
 impl UpdateManager {
   pub fn new() -> anyhow::Result<Self> {
     Ok(Self {
       tasks: Vec::new(),
-      channel_registry: channel::ChannelRegistry::new(),
+      hardware_registry: channel::ChannelRegistry::new(),
     })
   }
 
@@ -57,7 +57,7 @@ impl UpdateManager {
     task: GenericTask,
     perms: container::TaskPermission,
   ) -> anyhow::Result<()> {
-    let task = container::TaskContainer::new(task, perms, self.channel_registry.clone())?;
+    let task = container::TaskContainer::new(task, perms, self.hardware_registry.clone())?;
     self.tasks.push(task);
     Ok(())
   }
@@ -73,7 +73,7 @@ impl UpdateManager {
         ),
         TaskResult::ErrReload => {
           // attempt to reload, TODO: handle this error properly
-          if let Err(error) = task.reload_task(self.channel_registry.clone()) {
+          if let Err(error) = task.reload_task(self.hardware_registry.clone()) {
             println!("ERROR: {:?}", error);
             return UpdateReturn::Shutdown;
           }

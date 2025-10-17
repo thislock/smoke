@@ -49,7 +49,7 @@ enum PendingChannel<T> {
   Pending(TaskChannel<T>),
 }
 
-impl<T: Send + 'static> ChannelRegistry<T> {
+impl<T: Clone + Send + 'static> ChannelRegistry<T> {
   pub fn new() -> Self {
     Self {
       inner: Arc::new(Mutex::new(HashMap::new())),
