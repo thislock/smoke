@@ -12,21 +12,24 @@ pub struct SdlTask {
 
 impl Default for SdlTask {
   fn default() -> Self {
-    Self { handle: None, channel_reg: None, renderer_channel: None }
+    Self {
+      handle: None,
+      channel_reg: None,
+      renderer_channel: None,
+    }
   }
 }
 
 impl SdlTask {
   fn sync_renderer_channel<'a>(&'a mut self) -> &'a mut Option<channel::TaskChannel> {
-    
     if let Some(_renderer_channel) = &mut self.renderer_channel {
       return &mut self.renderer_channel;
     }
 
     if let Some(channel_registry) = self.channel_reg.clone() {
-      let channel_request =channel_registry
-        .get_or_create(crate::renderer::renderer::RENDERER_CHANNEL);
-      
+      let channel_request =
+        channel_registry.get_or_create(crate::renderer::renderer::RENDERER_CHANNEL);
+
       if let Some(channel_accepted) = channel_request {
         self.renderer_channel = Some(channel_accepted);
       }
@@ -37,7 +40,10 @@ impl SdlTask {
 }
 
 impl Task for SdlTask {
-  fn start(&mut self, channel_registry: channel::ChannelRegistry) -> anyhow::Result<update_manager::PostInit> {
+  fn start(
+    &mut self,
+    channel_registry: channel::ChannelRegistry,
+  ) -> anyhow::Result<update_manager::PostInit> {
     self.handle = Some(SdlHandle::new()?);
     self.channel_reg = Some(channel_registry);
     let _ = self.sync_renderer_channel();
@@ -54,20 +60,28 @@ impl Task for SdlTask {
   }
 
   fn update(&mut self) -> TaskResult {
+    
+    // i know this is terrible, but i just want my stupid code to work, and daddy borrow checker says no.
+    let mut raw_window = None;
+    if let Some(sdl_handle) = &self.handle {
+      raw_window = Some(sdl_handle
+        .get_window()
+        .expect("failed to get raw window handle"));
+    }
+    
     // recieve updates from the renderer channel
     if let Some(renderer_channel) = self.sync_renderer_channel() {
-      
       use crate::renderer::renderer::*;
+      
       while let Some(message) = renderer_channel.downcast_try_recv::<RendererMessage>() {
         match message {
           RendererMessage::RequestRawWindowHandle => {
-            if let Some(sdl_handle) = &self.handle {
-              renderer_channel.send(Box::new(sdl_handle.get_window().expect("failed to get raw window handle")));
+            if let Some(window_handle) = raw_window {
+              renderer_channel.send(window_handle);
             }
-          },
+          }
         }
       }
-
     }
 
     // sdl handle mutex scope START
@@ -101,13 +115,13 @@ pub struct SdlHandle {
 unsafe impl Send for SdlHandle {}
 unsafe impl Sync for SdlHandle {}
 
+#[derive(Clone, Copy)]
 pub struct LocalWindowHandle(pub raw_window_handle::RawWindowHandle);
 unsafe impl Send for LocalWindowHandle {}
 
 const DEFAULT_RESOLUTION: [u32; 2] = [600, 800];
 
 impl SdlHandle {
-
   #[allow(unused)]
   fn get_display(&self) -> anyhow::Result<raw_window_handle::DisplayHandle<'_>> {
     let display_handle = self.sdl_window.display_handle()?;
