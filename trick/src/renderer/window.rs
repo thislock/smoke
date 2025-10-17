@@ -77,8 +77,9 @@ impl Task for SdlTask {
         match message {
           RendererMessage::RequestRawWindowHandle => {
             if let Some(window_handle) = raw_window {
-              renderer_channel.send(window_handle);
+              renderer_channel.send(window_handle).expect("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
             }
+            println!("OJSFNGOJNSFJONGJOSNFOJGNJOSFJOGNOSFNGJNSFNGOIUNSFONG")
           }
         }
       }
