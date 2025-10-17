@@ -8,17 +8,19 @@ pub struct RendererTask {
   renderer_channel: Option<channel::TaskChannel>,
 }
 
+pub enum RendererMessage {
+  RequestRawWindowHandle,
+}
+
 impl RendererTask {
   fn sync_renderer_channel<'a>(&'a mut self) -> &'a mut Option<channel::TaskChannel> {
-    
     if let Some(_renderer_channel) = &mut self.renderer_channel {
       return &mut self.renderer_channel;
     }
 
     if let Some(channel_registry) = self.channel_registry.clone() {
-      let channel_request =channel_registry
-        .get_or_create(RENDERER_CHANNEL);
-      
+      let channel_request = channel_registry.get_or_create(RENDERER_CHANNEL);
+
       if let Some(channel_accepted) = channel_request {
         self.renderer_channel = Some(channel_accepted);
       }
@@ -30,27 +32,33 @@ impl RendererTask {
 
 impl Default for RendererTask {
   fn default() -> Self {
-    Self { wgpu: None, channel_registry: None, renderer_channel: None }
+    Self {
+      wgpu: None,
+      channel_registry: None,
+      renderer_channel: None,
+    }
   }
 }
 
 impl Task for RendererTask {
   fn start(&mut self, channel_registry: channel::ChannelRegistry) -> anyhow::Result<PostInit> {
-
     self.channel_registry = Some(channel_registry);
 
-    Ok(
-      PostInit {
-        name: "renderer task",
-        requests: &[],
-      }
-    )
+    Ok(PostInit {
+      name: "renderer task",
+      requests: &[],
+    })
   }
 
   fn update(&mut self) -> TaskResult {
-    
+    let is_wgpu_initialised = self.wgpu.is_some();
+
     if let Some(channel) = self.sync_renderer_channel() {
-      println!("LEZ GOOOOOOOOOOOOOO!!!!!!!!!!!!!!");
+      if is_wgpu_initialised {
+        channel
+          .send(RendererMessage::RequestRawWindowHandle)
+          .unwrap();
+      }
     }
 
     return TaskResult::Ok;

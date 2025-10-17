@@ -46,7 +46,10 @@ pub struct UpdateManager {
 
 impl UpdateManager {
   pub fn new() -> anyhow::Result<Self> {
-    Ok(Self { tasks: Vec::new(), channel_registry: channel::ChannelRegistry::new() })
+    Ok(Self {
+      tasks: Vec::new(),
+      channel_registry: channel::ChannelRegistry::new(),
+    })
   }
 
   pub fn add_task<GenericTask: Task + 'static>(

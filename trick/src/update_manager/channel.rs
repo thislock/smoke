@@ -20,17 +20,21 @@ impl TaskChannel {
   pub fn recv(&self) -> Option<Message> {
     self.receiver.recv().ok()
   }
-  
+
   /// Blocking message recieve
   pub fn downcast_recv<T: 'static>(&self) -> Option<T> {
     self.receiver.recv().ok()?.downcast::<T>().ok().map(|b| *b)
   }
-  
+
   /// Non-blocking message recieve
+  pub fn downcast_try_recv<T: 'static>(&self) -> Option<T> {
+    self.receiver.recv().ok()?.downcast::<T>().ok().map(|b| *b)
+  }
+
   pub fn try_recv(&self) -> Option<Message> {
     self.receiver.try_recv().ok()
   }
-  
+
   /// Blocking message recieve
   pub async fn recv_async(&self) -> Option<Message> {
     self.receiver.recv_async().await.ok()
@@ -65,7 +69,6 @@ impl ChannelRegistry {
   /// - If no other task has requested this ID yet, store it.
   /// - If another task is waiting, link the channels and remove the entry.
   pub fn get_or_create(&self, id: &'static str) -> Option<TaskChannel> {
-
     let mut map = self.inner.lock().ok()?;
 
     // if the channel was accepted already, stop and return it.
@@ -89,28 +92,20 @@ impl ChannelRegistry {
 
       // return everything back
 
-      // add the other channel to the accepted queue 
+      // add the other channel to the accepted queue
       // (side tangent, the spelling for "queue" is total bullshit, i had to google it for this stupid comment)
       map.insert(
         id,
         // set it to pending
-        PendingChannel::Pending(
-          matching_channel
-        ),
+        PendingChannel::Pending(matching_channel),
       )?;
 
       return Some(new_channel);
-    
     } else {
       // First task to request this channel
       let channel = TaskChannel::new();
-      map.insert(
-        id,
-        PendingChannel::Waiting(
-          channel,
-        ),
-      )?;
-      
+      map.insert(id, PendingChannel::Waiting(channel))?;
+
       return None;
     }
   }

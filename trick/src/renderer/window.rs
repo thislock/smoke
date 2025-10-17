@@ -1,4 +1,4 @@
-use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
+use raw_window_handle::{HasDisplayHandle, HasRawWindowHandle, HasWindowHandle};
 
 use crate::update_manager::{self, channel, Task, TaskResult};
 
@@ -54,10 +54,20 @@ impl Task for SdlTask {
   }
 
   fn update(&mut self) -> TaskResult {
-
     // recieve updates from the renderer channel
     if let Some(renderer_channel) = self.sync_renderer_channel() {
       
+      use crate::renderer::renderer::*;
+      while let Some(message) = renderer_channel.downcast_try_recv::<RendererMessage>() {
+        match message {
+          RendererMessage::RequestRawWindowHandle => {
+            if let Some(sdl_handle) = &self.handle {
+              renderer_channel.send(Box::new(sdl_handle.get_window().expect("failed to get raw window handle")));
+            }
+          },
+        }
+      }
+
     }
 
     // sdl handle mutex scope START
@@ -91,17 +101,22 @@ pub struct SdlHandle {
 unsafe impl Send for SdlHandle {}
 unsafe impl Sync for SdlHandle {}
 
+pub struct LocalWindowHandle(pub raw_window_handle::RawWindowHandle);
+unsafe impl Send for LocalWindowHandle {}
+
 const DEFAULT_RESOLUTION: [u32; 2] = [600, 800];
 
 impl SdlHandle {
+
+  #[allow(unused)]
   fn get_display(&self) -> anyhow::Result<raw_window_handle::DisplayHandle<'_>> {
     let display_handle = self.sdl_window.display_handle()?;
     return Ok(display_handle);
   }
 
-  fn get_window(&self) -> anyhow::Result<raw_window_handle::WindowHandle<'_>> {
-    let window_handle = self.sdl_window.window_handle()?;
-    return Ok(window_handle);
+  fn get_window(&self) -> anyhow::Result<LocalWindowHandle> {
+    let window_handle = self.sdl_window.window_handle()?.as_raw();
+    return Ok(LocalWindowHandle(window_handle));
   }
 
   fn new() -> anyhow::Result<Self> {
