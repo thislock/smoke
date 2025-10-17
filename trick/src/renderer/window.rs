@@ -7,7 +7,7 @@ use crate::update_manager::{self, channel, Task, TaskResult};
 pub struct SdlTask {
   handle: Option<SdlHandle>,
   channel_reg: Option<channel::ChannelRegistry>,
-  renderer_channel: Option<channel::TaskChannel<channel::Message>>,
+  renderer_channel: Option<channel::TaskChannel>,
 }
 
 impl Default for SdlTask {
@@ -17,7 +17,7 @@ impl Default for SdlTask {
 }
 
 impl SdlTask {
-  fn sync_renderer_channel<'a>(&'a mut self) -> &'a mut Option<channel::TaskChannel<channel::Message>> {
+  fn sync_renderer_channel<'a>(&'a mut self) -> &'a mut Option<channel::TaskChannel> {
     
     if let Some(_renderer_channel) = &mut self.renderer_channel {
       return &mut self.renderer_channel;

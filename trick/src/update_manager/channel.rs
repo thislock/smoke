@@ -1,12 +1,12 @@
 use flume::{Receiver, Sender};
 
 #[derive(Clone)]
-pub struct TaskChannel<T> {
-  sender: Sender<T>,
-  receiver: Receiver<T>,
+pub struct TaskChannel {
+  sender: Sender<Message>,
+  receiver: Receiver<Message>,
 }
 
-impl<T> TaskChannel<T> {
+impl TaskChannel {
   /// Create a new unbounded message channel
   pub fn new() -> Self {
     let (sender, receiver) = flume::unbounded();
@@ -14,22 +14,22 @@ impl<T> TaskChannel<T> {
   }
 
   /// Send a message (thread-safe)
-  pub fn send(&self, msg: T) -> Result<(), ()> {
-    self.sender.send(msg).map_err(|_| ())
+  pub fn send<T: 'static + Send>(&self, msg: T) -> Result<(), ()> {
+    self.sender.send(Box::new(msg)).map_err(|_| ())
   }
 
   /// Receive a message (blocking)
-  pub fn recv(&self) -> Option<T> {
+  pub fn recv(&self) -> Option<Message> {
     self.receiver.recv().ok()
   }
 
   /// Non-blocking try receive
-  pub fn try_recv(&self) -> Option<T> {
+  pub fn try_recv(&self) -> Option<Message> {
     self.receiver.try_recv().ok()
   }
 
   /// Async receive (if using async runtimes)
-  pub async fn recv_async(&self) -> Option<T> {
+  pub async fn recv_async(&self) -> Option<Message> {
     self.receiver.recv_async().await.ok()
   }
 }
@@ -47,8 +47,8 @@ pub struct ChannelRegistry {
 }
 
 enum PendingChannel {
-  Waiting(TaskChannel<Message>),
-  Pending(TaskChannel<Message>),
+  Waiting(TaskChannel),
+  Pending(TaskChannel),
 }
 
 impl ChannelRegistry {
@@ -61,8 +61,8 @@ impl ChannelRegistry {
   /// Request or create a channel with the given ID.
   /// - If no other task has requested this ID yet, store it.
   /// - If another task is waiting, link the channels and remove the entry.
-  pub fn get_or_create(&self, id: &'static str) -> Option<TaskChannel<Message>> {
-    
+  pub fn get_or_create(&self, id: &'static str) -> Option<TaskChannel> {
+
     let mut map = self.inner.lock().ok()?;
 
     // if the channel was accepted already, stop and return it.

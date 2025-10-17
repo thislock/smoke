@@ -5,11 +5,11 @@ pub const RENDERER_CHANNEL: &'static str = "IPEPIFSUIHDFIUHSIHGIHSFUIGHIYWHWRURU
 pub struct RendererTask {
   wgpu: Option<WgpuRenderer>,
   channel_registry: Option<channel::ChannelRegistry>,
-  renderer_channel: Option<channel::TaskChannel<channel::Message>>,
+  renderer_channel: Option<channel::TaskChannel>,
 }
 
 impl RendererTask {
-  fn sync_renderer_channel<'a>(&'a mut self) -> &'a mut Option<channel::TaskChannel<channel::Message>> {
+  fn sync_renderer_channel<'a>(&'a mut self) -> &'a mut Option<channel::TaskChannel> {
     
     if let Some(_renderer_channel) = &mut self.renderer_channel {
       return &mut self.renderer_channel;
