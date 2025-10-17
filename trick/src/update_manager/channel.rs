@@ -12,8 +12,8 @@ impl TaskChannel {
     Self { sender, receiver }
   }
 
-  pub fn send<T: 'static + Send>(&self, msg: T) -> Result<(), ()> {
-    self.sender.send(Box::new(msg)).map_err(|_| ())
+  pub fn send(&self, msg: Message) -> Result<(), ()> {
+    self.sender.send(msg).map_err(|error| {println!("error: {:?}", error); ()})
   }
 
   /// Blocking message recieve
@@ -21,15 +21,15 @@ impl TaskChannel {
     self.receiver.recv().ok()
   }
 
-  /// Blocking message recieve
-  pub fn downcast_recv<T: 'static>(&self) -> Option<T> {
-    self.receiver.recv().ok()?.downcast::<T>().ok().map(|b| *b)
-  }
+  // /// Blocking message recieve
+  // pub fn downcast_recv<T: 'static>(&self) -> Option<Message> {
+  //   self.receiver.recv().ok()?.downcast::<T>().ok().map(|b| *b)
+  // }
 
-  /// Non-blocking message recieve
-  pub fn downcast_try_recv<T: 'static>(&self) -> Option<T> {
-    self.receiver.recv().ok()?.downcast::<T>().ok().map(|b| *b)
-  }
+  // /// Non-blocking message recieve
+  // pub fn downcast_try_recv<T: 'static>(&self) -> Option<T> {
+  //   self.receiver.recv().ok()?.downcast::<T>().ok().map(|b| *b)
+  // }
 
   pub fn try_recv(&self) -> Option<Message> {
     self.receiver.try_recv().ok()
@@ -46,7 +46,15 @@ use std::any::Any;
 use std::sync::{Arc, Mutex};
 
 type ChannelId = &'static str;
-pub type Message = Box<dyn Any + Send + 'static>;
+
+
+//pub type Message = Box<dyn TaskMessage + 'static + Send>;
+
+pub enum Message {
+  WindowHandle(raw_window_handle::RawWindowHandle),
+  RequestWindowHandle,
+  OOOOOOO,
+}
 
 #[derive(Clone)]
 pub struct ChannelRegistry {
@@ -70,11 +78,13 @@ impl ChannelRegistry {
   /// - If another task is waiting, link the channels and remove the entry.
   pub fn get_or_create(&self, id: &'static str) -> Option<TaskChannel> {
     let mut map = self.inner.lock().ok()?;
+    println!("ran get or create function");
 
     // if the channel was accepted already, stop and return it.
     if let Some(PendingChannel::Pending(_)) = map.get(id) {
       // nested statement so it doesnt remove any Waiting state items.
       if let Some(PendingChannel::Pending(accepted_channel)) = map.remove(id) {
+        println!("returned pending");
         return Some(accepted_channel);
       }
     }
@@ -85,6 +95,7 @@ impl ChannelRegistry {
       // we got the channel verified, now create a new one, and link them up.
       let mut new_channel = TaskChannel::new();
 
+      println!("swapped a thingy");
       // swap around the recievers so they get messages from one another
       let bucket = new_channel.receiver;
       new_channel.receiver = matching_channel.receiver;
@@ -102,6 +113,7 @@ impl ChannelRegistry {
 
       return Some(new_channel);
     } else {
+      println!("cached a thingy");
       // First task to request this channel
       let channel = TaskChannel::new();
       map.insert(id, PendingChannel::Waiting(channel))?;

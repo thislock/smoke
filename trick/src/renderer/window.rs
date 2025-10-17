@@ -1,6 +1,6 @@
 use raw_window_handle::{HasDisplayHandle, HasRawWindowHandle, HasWindowHandle};
 
-use crate::update_manager::{self, channel, Task, TaskResult};
+use crate::update_manager::{self, channel::{self, Message}, Task, TaskResult};
 
 // contains the unsafe impl as much as possible by putting it in this module
 
@@ -73,14 +73,15 @@ impl Task for SdlTask {
     if let Some(renderer_channel) = self.sync_renderer_channel() {
       use crate::renderer::renderer::*;
       
-      while let Some(message) = renderer_channel.downcast_try_recv::<RendererMessage>() {
+      while let Some(message) = renderer_channel.try_recv() {
         match message {
-          RendererMessage::RequestRawWindowHandle => {
+          Message::WindowHandle(window_handle) => {
             if let Some(window_handle) = raw_window {
-              renderer_channel.send(window_handle).expect("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+              renderer_channel.send(Message::WindowHandle(window_handle.0)).expect("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
             }
             println!("OJSFNGOJNSFJONGJOSNFOJGNJOSFJOGNOSFNGJNSFNGOIUNSFONG")
           }
+          _ => {}
         }
       }
     }
