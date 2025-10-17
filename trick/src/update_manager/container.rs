@@ -1,5 +1,8 @@
 use std::sync::{Arc, Mutex};
-use crate::{renderer::registry::HardwareMessage, update_manager::{self, channel::ChannelRegistry}};
+use crate::{
+  renderer::registry::HardwareMessage,
+  update_manager::{self, channel::ChannelRegistry},
+};
 
 #[derive(Clone, PartialEq)]
 pub enum TaskPermission {
@@ -58,7 +61,10 @@ impl TaskContainer {
     return self.task_label;
   }
 
-  pub fn reload_task(&self, channel_registry: ChannelRegistry<HardwareMessage>) -> anyhow::Result<()> {
+  pub fn reload_task(
+    &self,
+    channel_registry: ChannelRegistry<HardwareMessage>,
+  ) -> anyhow::Result<()> {
     let mut task_lock = self.task.lock().unwrap();
     task_lock.end()?;
     task_lock.start(channel_registry)?;

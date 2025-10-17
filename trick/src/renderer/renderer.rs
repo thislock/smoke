@@ -1,9 +1,6 @@
 use crate::{
   renderer::{registry::HardwareMessage},
-  update_manager::{
-    PostInit, Task, TaskResult,
-    channel,
-  },
+  update_manager::{PostInit, Task, TaskResult, channel},
 };
 
 pub const RENDERER_CHANNEL: &'static str = "IPEPIFSUIHDFIUHSIHGIHSFUIGHIYWHWRURUURURURURUUR"; // computers don't need clarity
@@ -19,7 +16,9 @@ pub enum RendererMessage {
 }
 
 impl RendererTask {
-  fn sync_renderer_channel<'a>(&'a mut self) -> &'a mut Option<channel::TaskChannel<HardwareMessage>> {
+  fn sync_renderer_channel<'a>(
+    &'a mut self,
+  ) -> &'a mut Option<channel::TaskChannel<HardwareMessage>> {
     if let Some(_renderer_channel) = &mut self.renderer_channel {
       return &mut self.renderer_channel;
     }
@@ -47,7 +46,10 @@ impl Default for RendererTask {
 }
 
 impl Task for RendererTask {
-  fn start(&mut self, channel_registry: channel::ChannelRegistry<HardwareMessage>) -> anyhow::Result<PostInit> {
+  fn start(
+    &mut self,
+    channel_registry: channel::ChannelRegistry<HardwareMessage>,
+  ) -> anyhow::Result<PostInit> {
     self.channel_registry = Some(channel_registry);
 
     Ok(PostInit {
@@ -61,7 +63,9 @@ impl Task for RendererTask {
 
     if let Some(channel) = self.sync_renderer_channel() {
       if is_wgpu_initialised {
-        channel.send(HardwareMessage::RequestRawWindowHandle).unwrap();
+        channel
+          .send(HardwareMessage::RequestRawWindowHandle)
+          .unwrap();
       }
 
       while let Some(message) = channel.try_recv() {

@@ -29,7 +29,10 @@ pub enum ManagerMessage {
 }
 
 pub trait Task {
-  fn start(&mut self, channel_registry: channel::ChannelRegistry<HardwareMessage>) -> anyhow::Result<PostInit>;
+  fn start(
+    &mut self,
+    channel_registry: channel::ChannelRegistry<HardwareMessage>,
+  ) -> anyhow::Result<PostInit>;
   fn update(&mut self) -> TaskResult;
   fn end(&mut self) -> anyhow::Result<()>;
 }

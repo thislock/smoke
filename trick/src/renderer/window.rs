@@ -1,7 +1,7 @@
-
-use crate::{renderer::registry::{HardwareMessage, SyncRawWindow}, update_manager::{
-  self, channel, Task, TaskResult
-}};
+use crate::{
+  renderer::registry::{HardwareMessage, SyncRawWindow},
+  update_manager::{self, channel, Task, TaskResult},
+};
 
 // contains the unsafe impl as much as possible by putting it in this module
 
@@ -22,7 +22,9 @@ impl Default for SdlTask {
 }
 
 impl SdlTask {
-  fn sync_renderer_channel<'a>(&'a mut self) -> &'a mut Option<channel::TaskChannel<HardwareMessage>> {
+  fn sync_renderer_channel<'a>(
+    &'a mut self,
+  ) -> &'a mut Option<channel::TaskChannel<HardwareMessage>> {
     if let Some(_renderer_channel) = &mut self.renderer_channel {
       return &mut self.renderer_channel;
     }
@@ -124,7 +126,6 @@ const DEFAULT_RESOLUTION: [u32; 2] = [600, 800];
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 
 impl SdlHandle {
-
   #[allow(unused)]
   fn get_display(&self) -> anyhow::Result<raw_window_handle::DisplayHandle<'_>> {
     let display_handle = self.sdl_window.display_handle()?;
