@@ -61,13 +61,11 @@ impl<T: Clone + Send + 'static> ChannelRegistry<T> {
   /// - If another task is waiting, link the channels and remove the entry.
   pub fn get_or_create(&self, id: &'static str) -> Option<TaskChannel<T>> {
     let mut map = self.inner.lock().ok()?;
-    println!("ran get or create function");
 
     // if the channel was accepted already, stop and return it.
     if let Some(PendingChannel::Pending(_)) = map.get(id) {
       // nested statement so it doesnt remove any Waiting state items.
       if let Some(PendingChannel::Pending(accepted_channel)) = map.remove(id) {
-        println!("returned pending");
         return Some(accepted_channel);
       }
     }
@@ -78,7 +76,6 @@ impl<T: Clone + Send + 'static> ChannelRegistry<T> {
       // we got the channel verified, now create a new one, and link them up.
       let mut new_channel = TaskChannel::new();
 
-      println!("swapped a thingy");
       // swap around the recievers so they get messages from one another
       let bucket = new_channel.receiver;
       new_channel.receiver = matching_channel.receiver;
@@ -96,7 +93,6 @@ impl<T: Clone + Send + 'static> ChannelRegistry<T> {
 
       return Some(new_channel);
     } else {
-      println!("cached a thingy");
       // First task to request this channel
       let channel = TaskChannel::new();
       map.insert(id, PendingChannel::Waiting(channel));

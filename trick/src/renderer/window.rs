@@ -68,7 +68,7 @@ impl Task for SdlTask {
     if let Some(sdl_handle) = &self.handle {
       raw_window = Some(
         sdl_handle
-          .get_window()
+          .get_handles()
           .expect("failed to get raw window handle"),
       );
     }
@@ -81,9 +81,8 @@ impl Task for SdlTask {
             if let Some(window_handle) = raw_window {
               renderer_channel
                 .send(HardwareMessage::RawWindowHandle(window_handle))
-                .expect("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+                .expect("FAILED TO SEND MESSAGE");
             }
-            println!("OJSFNGOJNSFJONGJOSNFOJGNJOSFJOGNOSFNGJNSFNGOIUNSFONG")
           }
           _ => {}
         }
@@ -92,9 +91,6 @@ impl Task for SdlTask {
 
     // sdl handle mutex scope START
     {
-      // change this to unwrap_unchecked later, once that becomes a possible optimization
-      // but with only a few tasks, for now it's better to have the error handled properly
-      // let mut sdl_handle = unsafe { self.handle.as_mut().unwrap_unchecked() };
       let sdl_handle = { self.handle.as_mut().unwrap() };
 
       for event in sdl_handle.event_pump.poll_iter() {
@@ -126,15 +122,11 @@ const DEFAULT_RESOLUTION: [u32; 2] = [600, 800];
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 
 impl SdlHandle {
-  #[allow(unused)]
-  fn get_display(&self) -> anyhow::Result<raw_window_handle::DisplayHandle<'_>> {
-    let display_handle = self.sdl_window.display_handle()?;
-    return Ok(display_handle);
-  }
-
-  fn get_window(&self) -> anyhow::Result<SyncRawWindow> {
+  
+  fn get_handles(&self) -> anyhow::Result<SyncRawWindow> {
+    let display_handle = self.sdl_window.display_handle()?.as_raw();
     let window_handle = self.sdl_window.window_handle()?.as_raw();
-    return Ok(SyncRawWindow(window_handle));
+    return Ok(SyncRawWindow(window_handle, display_handle));
   }
 
   fn new() -> anyhow::Result<Self> {
