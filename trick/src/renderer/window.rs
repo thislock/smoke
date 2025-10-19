@@ -122,7 +122,6 @@ const DEFAULT_RESOLUTION: [u32; 2] = [600, 800];
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 
 impl SdlHandle {
-  
   fn get_handles(&self) -> anyhow::Result<SyncRawWindow> {
     let display_handle = self.sdl_window.display_handle()?.as_raw();
     let window_handle = self.sdl_window.window_handle()?.as_raw();

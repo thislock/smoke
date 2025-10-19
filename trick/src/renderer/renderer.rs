@@ -1,7 +1,5 @@
 use std::sync::Arc;
 
-use async_std::sync::Mutex;
-
 use crate::{
   renderer::registry::{HardwareMessage, SyncRawWindow},
   update_manager::{channel, PostInit, Task, TaskResult},
@@ -172,7 +170,7 @@ impl WgpuRenderer {
       usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
       format: surface_format,
       width: 800,  // TODO: MAKE THIS ACTUALLY MATCH THE SURFACE.
-      height: 600,  // TODO: MAKE THIS ACTUALLY MATCH THE SURFACE.
+      height: 600, // TODO: MAKE THIS ACTUALLY MATCH THE SURFACE.
       present_mode: surface_caps.present_modes[0],
       alpha_mode: surface_caps.alpha_modes[0],
       view_formats: vec![],
