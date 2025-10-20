@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use crate::{
-  renderer::registry::{HardwareMessage, SyncRawWindow},
-  update_manager::{channel, PostInit, Task, TaskResult},
+  renderer::registry::{HardwareMessage, SurfaceChanges, SyncRawWindow},
+  update_manager::{channel::{self, TaskReceiver}, PostInit, Task, TaskResult},
 };
 
 pub const RENDERER_CHANNEL: &'static str = "IPEPIFSUIHDFIUHSIHGIHSFUIGHIYWHWRURUURURURURUUR"; // computers don't need clarity
@@ -69,7 +69,7 @@ impl Task for RendererTask {
 
       while let Some(message) = channel.try_recv() {
         match message {
-          HardwareMessage::RawWindowHandle(raw_window) => {
+          HardwareMessage::RenderSyncro(raw_window) => {
             new_wgpu = WgpuRenderer::new(raw_window).ok();
           }
           _ => {}
@@ -82,7 +82,11 @@ impl Task for RendererTask {
     }
 
     if let Some(renderer) = &mut self.wgpu {
-      renderer.update_renderer();
+      let rendering_result = renderer.update_renderer();
+      if let Err(rendering_error) = rendering_result {
+        println!("rendering error: {}", rendering_error);
+        self.wgpu = None;
+      }
     }
 
     return TaskResult::Ok;
@@ -99,8 +103,7 @@ struct WgpuRenderer {
   device: wgpu::Device,
   queue: wgpu::Queue,
   config: wgpu::SurfaceConfiguration,
-  // don't use this
-  window: Arc<SyncRawWindow>,
+  surface_updates: TaskReceiver<SurfaceChanges>,
 }
 
 pub fn async_facade<F, T>(future: F) -> T
@@ -113,7 +116,19 @@ where
 impl WgpuRenderer {
   fn update_renderer(&mut self) -> Result<(), wgpu::SurfaceError> {
 
-    self.surface.configure(&self.device, &self.config);
+    while let Some(window_message) = self.surface_updates.try_recv() {
+      match window_message {
+        SurfaceChanges::UpdateResolution(win_resolution) => {
+          let width = win_resolution.width;
+          let height = win_resolution.height;
+          if width > 0 && height > 0 {
+            self.config.width = width;
+            self.config.height = height;
+            self.surface.configure(&self.device, &self.config);
+          }
+        }
+      }
+    }
 
     let output = self.surface.get_current_texture()?;
     let view = output
@@ -181,7 +196,8 @@ impl WgpuRenderer {
           power_preference: wgpu::PowerPreference::default(),
           compatible_surface: Some(&surface),
           force_fallback_adapter: false,
-        }).await
+        })
+        .await
     })?;
 
     let (device, queue) = async_facade(async {
@@ -199,7 +215,8 @@ impl WgpuRenderer {
           memory_hints: Default::default(),
           trace: wgpu::Trace::Off,
           experimental_features: wgpu::ExperimentalFeatures::disabled(),
-        }).await
+        })
+        .await
     })?;
 
     let surface_caps = surface.get_capabilities(&adapter);
@@ -216,8 +233,7 @@ impl WgpuRenderer {
     let config = wgpu::SurfaceConfiguration {
       usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
       format: surface_format,
-      width: 800,  // TODO: MAKE THIS ACTUALLY MATCH THE SURFACE.
-      height: 600, // TODO: MAKE THIS ACTUALLY MATCH THE SURFACE.
+      width: 100, height: 100,
       present_mode: surface_caps.present_modes[0],
       alpha_mode: surface_caps.alpha_modes[0],
       view_formats: vec![],
@@ -229,7 +245,7 @@ impl WgpuRenderer {
       device,
       queue,
       config,
-      window,
+      surface_updates: window.2.clone(),
     })
   }
 }
