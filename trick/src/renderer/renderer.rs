@@ -214,8 +214,13 @@ impl WgpuRenderer {
           },
           memory_hints: Default::default(),
           trace: wgpu::Trace::Off,
+<<<<<<< HEAD
         })
         .await
+=======
+          experimental_features: wgpu::ExperimentalFeatures::disabled(),
+        }).await
+>>>>>>> origin/master
     })?;
 
     let surface_caps = surface.get_capabilities(&adapter);
