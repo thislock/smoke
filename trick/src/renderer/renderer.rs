@@ -81,6 +81,10 @@ impl Task for RendererTask {
       self.wgpu = new_wgpu;
     }
 
+    if let Some(renderer) = &mut self.wgpu {
+      renderer.update_renderer();
+    }
+
     return TaskResult::Ok;
   }
 
@@ -95,7 +99,7 @@ struct WgpuRenderer {
   device: wgpu::Device,
   queue: wgpu::Queue,
   config: wgpu::SurfaceConfiguration,
-  is_surface_configured: bool,
+  // don't use this
   window: Arc<SyncRawWindow>,
 }
 
@@ -107,7 +111,51 @@ where
 }
 
 impl WgpuRenderer {
-  pub fn new(window: SyncRawWindow) -> anyhow::Result<Self> {
+  fn update_renderer(&mut self) -> Result<(), wgpu::SurfaceError> {
+
+    self.surface.configure(&self.device, &self.config);
+
+    let output = self.surface.get_current_texture()?;
+    let view = output
+      .texture
+      .create_view(&wgpu::TextureViewDescriptor::default());
+
+    let mut encoder = self
+      .device
+      .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+        label: Some("Render Encoder"),
+      });
+
+    {
+      let _render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        label: Some("Render Pass"),
+        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+          view: &view,
+          resolve_target: None,
+          ops: wgpu::Operations {
+            load: wgpu::LoadOp::Clear(wgpu::Color {
+              r: 0.1,
+              g: 0.2,
+              b: 0.3,
+              a: 1.0,
+            }),
+            store: wgpu::StoreOp::Store,
+          },
+          depth_slice: None,
+        })],
+        depth_stencil_attachment: None,
+        occlusion_query_set: None,
+        timestamp_writes: None,
+      });
+    }
+
+    self.queue.submit(std::iter::once(encoder.finish()));
+    output.present();
+
+    Ok(())
+  }
+
+  fn new(window: SyncRawWindow) -> anyhow::Result<Self> {
     let window = Arc::new(window);
 
     // The instance is a handle to our GPU
@@ -133,8 +181,7 @@ impl WgpuRenderer {
           power_preference: wgpu::PowerPreference::default(),
           compatible_surface: Some(&surface),
           force_fallback_adapter: false,
-        })
-        .await
+        }).await
     })?;
 
     let (device, queue) = async_facade(async {
@@ -151,8 +198,7 @@ impl WgpuRenderer {
           },
           memory_hints: Default::default(),
           trace: wgpu::Trace::Off,
-        })
-        .await
+        }).await
     })?;
 
     let surface_caps = surface.get_capabilities(&adapter);
@@ -182,7 +228,6 @@ impl WgpuRenderer {
       device,
       queue,
       config,
-      is_surface_configured: true,
       window,
     })
   }

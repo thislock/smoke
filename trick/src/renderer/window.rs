@@ -117,7 +117,7 @@ pub struct SdlHandle {
 unsafe impl Send for SdlHandle {}
 unsafe impl Sync for SdlHandle {}
 
-const DEFAULT_RESOLUTION: [u32; 2] = [600, 800];
+const DEFAULT_RESOLUTION: [u32; 2] = [800, 600];
 
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 
