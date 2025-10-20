@@ -84,7 +84,6 @@ impl Task for RendererTask {
     if let Some(renderer) = &mut self.wgpu {
       let rendering_result = renderer.update_renderer();
       if let Err(rendering_error) = rendering_result {
-        println!("rendering error: {}", rendering_error);
         self.wgpu = None;
       }
     }
