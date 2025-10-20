@@ -4,8 +4,6 @@ version = "0.1.0"
 edition = "2024"
 build = "build.rs"
 
-[lib]
-
 [build-dependencies]
 cmake = "0.1"
 git2 = "0.19"
