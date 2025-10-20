@@ -12,6 +12,18 @@ impl<T: 'static + Send> TaskChannel<T> {
     Self { sender, receiver }
   }
 
+  /// Split the TaskChannel into separate Sender/Receiver objects
+  pub fn split(self) -> (TaskSender<T>, TaskReceiver<T>) {
+    (
+      TaskSender {
+        sender: self.sender,
+      },
+      TaskReceiver {
+        receiver: self.receiver,
+      },
+    )
+  }
+
   pub fn send(&self, msg: T) -> Result<(), ()> {
     self.sender.send(msg).map_err(|error| {
       println!("error: {:?}", error);
@@ -29,6 +41,48 @@ impl<T: 'static + Send> TaskChannel<T> {
   }
 
   /// Blocking message recieve
+  pub async fn recv_async(&self) -> Option<T> {
+    self.receiver.recv_async().await.ok()
+  }
+}
+
+/// --------------------------------------------
+/// Decoupled Task SENDER -
+/// --------------------------------------------
+#[derive(Clone)]
+pub struct TaskSender<T> {
+  sender: Sender<T>,
+}
+
+impl<T: Send + 'static> TaskSender<T> {
+  pub fn send(&self, msg: T) -> Result<(), ()> {
+    self.sender.send(msg).map_err(|error| {
+      println!("error: {:?}", error);
+      ()
+    })
+  }
+}
+
+/// --------------------------------------------
+/// Decoupled Task RECIEVER -
+/// --------------------------------------------
+#[derive(Clone)]
+pub struct TaskReceiver<T> {
+  receiver: Receiver<T>,
+}
+
+impl<T: Send + 'static> TaskReceiver<T> {
+  /// Blocking receive
+  pub fn recv(&self) -> Option<T> {
+    self.receiver.recv().ok()
+  }
+
+  /// Non-blocking receive
+  pub fn try_recv(&self) -> Option<T> {
+    self.receiver.try_recv().ok()
+  }
+
+  /// Async receive
   pub async fn recv_async(&self) -> Option<T> {
     self.receiver.recv_async().await.ok()
   }
