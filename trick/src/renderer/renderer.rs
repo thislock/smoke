@@ -118,6 +118,13 @@ where
 
 impl WgpuRenderer {
   fn update_renderer(&mut self) -> Result<(), wgpu::SurfaceError> {
+    
+
+    if self.surface_updates.is_disconnected() {
+      return Ok(());
+    }
+    
+    
     while let Some(window_message) = self.surface_updates.try_recv() {
       match window_message {
         SurfaceChanges::UpdateResolution(win_resolution) => {
@@ -130,7 +137,7 @@ impl WgpuRenderer {
           }
         }
       }
-    }
+    } 
 
     let output = self.surface.get_current_texture()?;
     let view = output
