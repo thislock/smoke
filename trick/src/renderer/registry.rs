@@ -4,7 +4,6 @@ use crate::update_manager::channel::TaskReceiver;
 pub enum HardwareMessage {
   RequestRawWindowHandle,
   RenderSyncro(SyncRawWindow),
-  End,
 }
 
 #[derive(Clone, Copy)]
