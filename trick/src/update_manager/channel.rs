@@ -55,6 +55,11 @@ pub struct TaskSender<T> {
 }
 
 impl<T: Send + 'static> TaskSender<T> {
+
+  pub fn is_disconnected(&self) -> bool {
+    self.sender.is_disconnected()
+  }
+
   pub fn send(&self, msg: T) -> Result<(), ()> {
     self.sender.send(msg).map_err(|error| {
       println!("error: {:?}", error);
@@ -72,6 +77,11 @@ pub struct TaskReceiver<T> {
 }
 
 impl<T: Send + 'static> TaskReceiver<T> {
+  
+  pub fn is_disconnected(&self) -> bool {
+    self.receiver.is_disconnected()
+  }
+  
   /// Blocking receive
   pub fn recv(&self) -> Option<T> {
     self.receiver.recv().ok()
