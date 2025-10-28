@@ -12,14 +12,16 @@ fn main() -> anyhow::Result<()> {
     update_manager::container::TaskPermission::Root,
   )?;
 
-  loop {
+  'main: loop {
     let update_result = program.update_tasks();
     use trick::update_manager::*;
     match update_result {
       UpdateReturn::Ok => {}
       UpdateReturn::Shutdown => {
-        return Ok(());
+        break 'main;
       }
     }
   }
+
+  return Ok(());
 }
