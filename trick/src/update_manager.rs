@@ -19,8 +19,14 @@ pub enum TaskRequest {
   LinkChannel(&'static str),
 }
 
+#[derive(PartialEq)]
+pub enum TaskTag {
+  DropLast,
+}
+
 pub struct PostInit {
   pub name: &'static str,
+  pub tags: &'static [TaskTag],
   pub requests: &'static [TaskRequest],
 }
 
@@ -45,6 +51,13 @@ pub enum UpdateReturn {
 pub struct UpdateManager {
   tasks: Vec<container::TaskContainer>,
   hardware_registry: channel::ChannelRegistry<HardwareMessage>,
+}
+
+impl Drop for UpdateManager {
+  fn drop(&mut self) {
+    // remove everything that doesn't have the "DropLast" tag
+    self.tasks.retain(|x| x.get_tag().contains(&TaskTag::DropLast));
+  }
 }
 
 impl UpdateManager {

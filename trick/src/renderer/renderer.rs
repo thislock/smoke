@@ -54,12 +54,14 @@ impl Task for RendererTask {
     self.channel_registry = Some(channel_registry);
 
     Ok(PostInit {
+      tags: &[],
       name: "renderer task",
       requests: &[],
     })
   }
 
   fn update(&mut self) -> TaskResult {
+
     let is_wgpu_initialised = self.wgpu.is_none();
     let mut new_wgpu = None;
 
@@ -118,12 +120,12 @@ where
 
 impl WgpuRenderer {
   fn update_renderer(&mut self) -> Result<(), wgpu::SurfaceError> {
-    
+
 
     if self.surface_updates.is_disconnected() {
       return Ok(());
     }
-    
+
     
     while let Some(window_message) = self.surface_updates.try_recv() {
       match window_message {

@@ -1,9 +1,7 @@
 use crate::{
   renderer::registry::{HardwareMessage, SurfaceChanges, SurfaceResolution, SyncRawWindow},
   update_manager::{
-    self,
-    channel::{self, TaskChannel, TaskSender},
-    Task, TaskResult,
+    self, Task, TaskResult, TaskTag, channel::{self, TaskChannel, TaskSender}
   },
 };
 
@@ -56,6 +54,7 @@ impl Task for SdlTask {
     let _ = self.sync_renderer_channel();
     return Ok(update_manager::PostInit {
       name: "sdl3 desktop task",
+      tags: &[TaskTag::DropLast],
       requests: &[],
     });
   }
@@ -100,6 +99,7 @@ impl Task for SdlTask {
       for event in sdl_handle.event_pump.poll_iter() {
         match event {
           sdl3::event::Event::Quit { .. } => {
+            println!("requested shutdown");
             return TaskResult::RequestShutdown;
           }
           sdl3::event::Event::Window { win_event, .. } => match win_event {

@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 use crate::{
   renderer::registry::HardwareMessage,
-  update_manager::{self, channel::ChannelRegistry},
+  update_manager::{self, TaskTag, channel::ChannelRegistry},
 };
 
 #[derive(Clone, PartialEq)]
@@ -13,6 +13,7 @@ pub enum TaskPermission {
 pub struct TaskContainer {
   task: Arc<Mutex<dyn update_manager::Task>>,
   task_label: &'static str,
+  tags: &'static [TaskTag],
   task_permission: TaskPermission,
 }
 
@@ -39,14 +40,17 @@ impl TaskContainer {
     TaskT: Sized,
   {
     let mut label = "BLANK TASK LABEL";
+    let mut tags: &'static [TaskTag] = &[];
 
     if let Ok(post_init) = task.start(channel_registry) {
       label = post_init.name;
+      tags = post_init.tags;
     }
 
     Ok(Self {
       task: Arc::new(Mutex::new(task)),
       task_label: label,
+      tags,
       task_permission: permissions,
     })
   }
@@ -57,6 +61,10 @@ impl TaskContainer {
 
   pub fn get_label(&self) -> &str {
     return self.task_label;
+  }
+
+  pub fn get_tag(&self) -> &'static [TaskTag] {
+    self.tags
   }
 
   pub fn reload_task(
