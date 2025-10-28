@@ -16,18 +16,18 @@ pub struct TaskContainer {
   task_permission: TaskPermission,
 }
 
-impl Drop for TaskContainer {
-  fn drop(&mut self) {
-    let mut error_msg = String::from("failed to drop: ");
-    error_msg.push_str(&self.task_label);
-    let error_msg: &str = &error_msg;
+// impl Drop for TaskContainer {
+//   fn drop(&mut self) {
+//     let mut error_msg = String::from("failed to drop: ");
+//     error_msg.push_str(&self.task_label);
+//     let error_msg: &str = &error_msg;
 
-    // executes the tasks "destructor" after unlocking
-    // while let Ok(mut unlocked_task) = self.task.lock() {
-    //   unlocked_task.end().expect(error_msg);
-    // }
-  }
-}
+//     // executes the tasks "destructor" after unlocking
+//     // while let Ok(mut unlocked_task) = self.task.lock() {
+//     //   unlocked_task.end().expect(error_msg);
+//     // }
+//   }
+// }
 
 impl TaskContainer {
   pub fn new<TaskT: update_manager::Task + 'static>(
