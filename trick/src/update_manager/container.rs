@@ -23,11 +23,9 @@ impl Drop for TaskContainer {
     let error_msg: &str = &error_msg;
 
     // executes the tasks "destructor" after unlocking
-
-    // ok this crashes things, so im going to leave it be
-
-    // let mut task_lock = self.task.lock().expect(error_msg);
-    // task_lock.end().expect(error_msg);
+    // while let Ok(mut unlocked_task) = self.task.lock() {
+    //   unlocked_task.end().expect(error_msg);
+    // }
   }
 }
 

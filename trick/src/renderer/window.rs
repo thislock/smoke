@@ -1,6 +1,10 @@
 use crate::{
   renderer::registry::{HardwareMessage, SurfaceChanges, SurfaceResolution, SyncRawWindow},
-  update_manager::{self, channel::{self, TaskChannel, TaskSender}, Task, TaskResult},
+  update_manager::{
+    self,
+    channel::{self, TaskChannel, TaskSender},
+    Task, TaskResult,
+  },
 };
 
 // contains the unsafe impl as much as possible by putting it in this module
@@ -97,25 +101,23 @@ impl Task for SdlTask {
         match event {
           sdl3::event::Event::Quit { .. } => {
             return TaskResult::RequestShutdown;
-          },
-          sdl3::event::Event::Window { win_event, .. } => {
-            match win_event {
-              sdl3::event::WindowEvent::Resized( .. ) => {
-                if let Some(sender) = &sdl_handle.renderer_channel {
-
-                  let window_resolution = {
-                    let size = sdl_handle.sdl_window.size();
-                    SurfaceResolution {
-                      width: size.0,
-                      height: size.1,
-                    }
-                  };
-                  sender.send(SurfaceChanges::UpdateResolution(window_resolution)).unwrap();
-
-                }
+          }
+          sdl3::event::Event::Window { win_event, .. } => match win_event {
+            sdl3::event::WindowEvent::Resized(..) => {
+              if let Some(sender) = &sdl_handle.renderer_channel {
+                let window_resolution = {
+                  let size = sdl_handle.sdl_window.size();
+                  SurfaceResolution {
+                    width: size.0,
+                    height: size.1,
+                  }
+                };
+                sender
+                  .send(SurfaceChanges::UpdateResolution(window_resolution))
+                  .unwrap();
               }
-              _=> {},
             }
+            _ => {}
           },
           _ => {}
         }
@@ -143,11 +145,12 @@ const DEFAULT_RESOLUTION: [u32; 2] = [800, 600];
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 
 impl SdlHandle {
-
   fn send_renderer_changes(&self) {
     if let Some(sender) = &self.renderer_channel {
       let window_resolution = self.get_surface_resolution();
-      sender.send(SurfaceChanges::UpdateResolution(window_resolution)).unwrap();
+      sender
+        .send(SurfaceChanges::UpdateResolution(window_resolution))
+        .unwrap();
     }
   }
 
@@ -168,11 +171,7 @@ impl SdlHandle {
     self.renderer_channel = Some(send);
     self.send_renderer_changes();
 
-    return Ok(SyncRawWindow(
-      window_handle,
-      display_handle,
-      reciever,
-    ));
+    return Ok(SyncRawWindow(window_handle, display_handle, reciever));
   }
 
   fn new() -> anyhow::Result<Self> {

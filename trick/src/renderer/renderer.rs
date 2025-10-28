@@ -2,7 +2,10 @@ use std::sync::Arc;
 
 use crate::{
   renderer::registry::{HardwareMessage, SurfaceChanges, SyncRawWindow},
-  update_manager::{channel::{self, TaskReceiver}, PostInit, Task, TaskResult},
+  update_manager::{
+    channel::{self, TaskReceiver},
+    PostInit, Task, TaskResult,
+  },
 };
 
 pub const RENDERER_CHANNEL: &'static str = "IPEPIFSUIHDFIUHSIHGIHSFUIGHIYWHWRURUURURURURUUR"; // computers don't need clarity
@@ -85,6 +88,7 @@ impl Task for RendererTask {
       let rendering_result = renderer.update_renderer();
       if let Err(rendering_error) = rendering_result {
         self.wgpu = None;
+        println!("rendering error: {rendering_error}");
       }
     }
 
@@ -114,7 +118,6 @@ where
 
 impl WgpuRenderer {
   fn update_renderer(&mut self) -> Result<(), wgpu::SurfaceError> {
-
     while let Some(window_message) = self.surface_updates.try_recv() {
       match window_message {
         SurfaceChanges::UpdateResolution(win_resolution) => {
@@ -232,7 +235,8 @@ impl WgpuRenderer {
     let config = wgpu::SurfaceConfiguration {
       usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
       format: surface_format,
-      width: 100, height: 100,
+      width: 100,
+      height: 100,
       present_mode: surface_caps.present_modes[0],
       alpha_mode: surface_caps.alpha_modes[0],
       view_formats: vec![],
