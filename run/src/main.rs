@@ -23,7 +23,5 @@ fn main() -> anyhow::Result<()> {
     }
   }
 
-  println!("done");
-
   return Ok(());
 }

@@ -99,7 +99,6 @@ impl Task for SdlTask {
       for event in sdl_handle.event_pump.poll_iter() {
         match event {
           sdl3::event::Event::Quit { .. } => {
-            println!("requested shutdown");
             return TaskResult::RequestShutdown;
           }
           sdl3::event::Event::Window { win_event, .. } => match win_event {
