@@ -55,7 +55,6 @@ pub struct TaskSender<T> {
 }
 
 impl<T: Send + 'static> TaskSender<T> {
-
   pub fn is_disconnected(&self) -> bool {
     self.sender.is_disconnected()
   }
@@ -77,11 +76,10 @@ pub struct TaskReceiver<T> {
 }
 
 impl<T: Send + 'static> TaskReceiver<T> {
-  
   pub fn is_disconnected(&self) -> bool {
     self.receiver.is_disconnected()
   }
-  
+
   /// Blocking receive
   pub fn recv(&self) -> Option<T> {
     self.receiver.recv().ok()

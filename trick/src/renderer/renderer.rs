@@ -2,10 +2,15 @@ use std::sync::Arc;
 
 use crate::{
   renderer::registry::{HardwareMessage, SurfaceChanges, SyncRawWindow},
-  update_manager::{channel::{self, TaskReceiver}, PostInit, Task, TaskResult},
+  update_manager::{
+    channel::{self, TaskReceiver},
+    PostInit, Task, TaskResult, TaskTag,
+  },
 };
 
+/// **************************************** CONSTANTS ****************************************** ///
 pub const RENDERER_CHANNEL: &'static str = "IPEPIFSUIHDFIUHSIHGIHSFUIGHIYWHWRURUURURURURUUR"; // computers don't need clarity
+const RENDERER_TAGS: &'static [TaskTag] = &[];
 
 pub struct RendererTask {
   wgpu: Option<WgpuRenderer>,
@@ -43,7 +48,7 @@ impl Default for RendererTask {
   }
 }
 
-impl Task for RendererTask {
+impl Task<HardwareMessage> for RendererTask {
   fn start(
     &mut self,
     channel_registry: channel::ChannelRegistry<HardwareMessage>,
@@ -51,6 +56,7 @@ impl Task for RendererTask {
     self.channel_registry = Some(channel_registry);
 
     Ok(PostInit {
+      tags: RENDERER_TAGS,
       name: "renderer task",
       requests: &[],
     })
@@ -114,7 +120,6 @@ where
 
 impl WgpuRenderer {
   fn update_renderer(&mut self) -> Result<(), wgpu::SurfaceError> {
-
     while let Some(window_message) = self.surface_updates.try_recv() {
       match window_message {
         SurfaceChanges::UpdateResolution(win_resolution) => {
@@ -232,7 +237,8 @@ impl WgpuRenderer {
     let config = wgpu::SurfaceConfiguration {
       usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
       format: surface_format,
-      width: 100, height: 100,
+      width: 100,
+      height: 100,
       present_mode: surface_caps.present_modes[0],
       alpha_mode: surface_caps.alpha_modes[0],
       view_formats: vec![],

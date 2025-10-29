@@ -1,5 +1,6 @@
 fn main() -> anyhow::Result<()> {
-  let mut program = trick::update_manager::UpdateManager::new()?;
+  use trick::renderer::registry::HardwareMessage;
+  let mut program = trick::update_manager::UpdateManager::<HardwareMessage>::new()?;
 
   use trick::*;
   program.add_task(

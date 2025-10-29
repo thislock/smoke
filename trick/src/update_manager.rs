@@ -1,4 +1,4 @@
-use crate::{renderer::registry::HardwareMessage, update_manager::container::TaskPermission};
+use crate::update_manager::container::TaskPermission;
 
 pub mod channel;
 pub mod container;
@@ -34,11 +34,8 @@ pub enum ManagerMessage {
   TaskChannel(),
 }
 
-pub trait Task {
-  fn start(
-    &mut self,
-    channel_registry: channel::ChannelRegistry<HardwareMessage>,
-  ) -> anyhow::Result<PostInit>;
+pub trait Task<M: Clone + Send + 'static> {
+  fn start(&mut self, channel_registry: channel::ChannelRegistry<M>) -> anyhow::Result<PostInit>;
   fn update(&mut self) -> TaskResult;
   fn end(&mut self) -> anyhow::Result<()>;
 }
@@ -48,19 +45,21 @@ pub enum UpdateReturn {
   Shutdown,
 }
 
-pub struct UpdateManager {
-  tasks: Vec<container::TaskContainer>,
-  hardware_registry: channel::ChannelRegistry<HardwareMessage>,
+pub struct UpdateManager<M: Clone + Send + 'static> {
+  tasks: Vec<container::TaskContainer<M>>,
+  hardware_registry: channel::ChannelRegistry<M>,
 }
 
-impl Drop for UpdateManager {
+impl<M: Clone + Send + 'static> Drop for UpdateManager<M> {
   fn drop(&mut self) {
     // remove everything that doesn't have the "DropLast" tag
-    self.tasks.retain(|x| x.get_tag().contains(&TaskTag::DropLast));
+    self
+      .tasks
+      .retain(|x| x.get_tag().contains(&TaskTag::DropLast));
   }
 }
 
-impl UpdateManager {
+impl<M: Clone + Send + 'static> UpdateManager<M> {
   pub fn new() -> anyhow::Result<Self> {
     Ok(Self {
       tasks: Vec::new(),
@@ -68,9 +67,9 @@ impl UpdateManager {
     })
   }
 
-  pub fn add_task<GenericTask: Task + 'static>(
+  pub fn add_task<TaskT: Task<M> + 'static>(
     &mut self,
-    task: GenericTask,
+    task: TaskT,
     perms: container::TaskPermission,
   ) -> anyhow::Result<()> {
     let task = container::TaskContainer::new(task, perms, self.hardware_registry.clone())?;

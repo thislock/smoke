@@ -1,7 +1,8 @@
 use crate::{
   renderer::registry::{HardwareMessage, SurfaceChanges, SurfaceResolution, SyncRawWindow},
   update_manager::{
-    self, Task, TaskResult, TaskTag, channel::{self, TaskChannel, TaskSender}
+    self, Task, TaskResult, TaskTag,
+    channel::{self, TaskChannel, TaskSender},
   },
 };
 
@@ -44,7 +45,7 @@ impl SdlTask {
   }
 }
 
-impl Task for SdlTask {
+impl Task<HardwareMessage> for SdlTask {
   fn start(
     &mut self,
     channel_registry: channel::ChannelRegistry<HardwareMessage>,
