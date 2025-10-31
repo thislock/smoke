@@ -1,6 +1,6 @@
 
 [workspace]
-members = ["trick", "run"]
+members = ["trick", "run", "asset_manager"]
 
 resolver = "2"
 
