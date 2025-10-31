@@ -1,0 +1,2 @@
+sudo pacman -Syu pkg-config cmake (some c compiler) make
+the build process compiles sdl3 in the target directory, so keep that in mind if your short on space
