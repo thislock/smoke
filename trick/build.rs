@@ -2,7 +2,15 @@ use std::{env, path::Path};
 
 // this just makes sure the sdl3 lib files are compiled and present without you having to do anything
 
+const SHOULD_BUILD_SDL: bool = false;
+
 fn main() {
+  if SHOULD_BUILD_SDL {
+    build_sdl();
+  }
+}
+
+fn build_sdl() {
   let out_dir = env::var("OUT_DIR").unwrap();
   let sdl_path = Path::new(&out_dir).join("SDL");
 

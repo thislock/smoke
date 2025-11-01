@@ -12,6 +12,9 @@ cmake = "0.1"
 git2 = "0.20.2"
 
 [dependencies]
+
+asset_manager = { path = "../asset_manager" }
+
 anyhow = "1.0.100"
 arc-swap = "1.7.1"
 async-std = "1.13.2"

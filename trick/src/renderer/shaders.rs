@@ -5,6 +5,7 @@ use wgpu::util::DeviceExt;
 pub struct PipelineManager {
   device: Arc<wgpu::Device>,
   pipelines: Vec<ArcSwap<ShaderPipeline>>,
+  asset_manager: asset_manager::AssetManager,
 }
 
 /// Represents one shader + its own render pipeline + its configuration
@@ -25,7 +26,6 @@ impl ShaderPipeline {
     fragment_entry: &str,
     vertex_layouts: &[wgpu::VertexBufferLayout<'_>],
   ) -> Self {
-
     let label = "PLACEHOLDER_LABEL";
 
     // Create shader module
@@ -107,7 +107,6 @@ impl ShaderManager {
     fragment_entry: &str,
     vertex_layouts: &[wgpu::VertexBufferLayout<'_>],
   ) {
-
     let name = "PLACEHOLDER_NAME";
 
     let pipeline = ShaderPipeline::new(
