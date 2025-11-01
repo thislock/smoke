@@ -1,5 +1,11 @@
 use std::{collections::HashMap, fs, path::Path, sync::Arc};
+use arc_swap::ArcSwap;
 use wgpu::util::DeviceExt;
+
+pub struct PipelineManager {
+  device: Arc<wgpu::Device>,
+  pipelines: Vec<ArcSwap<ShaderPipeline>>,
+}
 
 /// Represents one shader + its own render pipeline + its configuration
 pub struct ShaderPipeline {
@@ -14,20 +20,18 @@ impl ShaderPipeline {
   pub fn new(
     device: &wgpu::Device,
     config: &wgpu::SurfaceConfiguration,
-    shader_path: &str,
-    label: &str,
+    shader_code: &str,
     vertex_entry: &str,
     fragment_entry: &str,
     vertex_layouts: &[wgpu::VertexBufferLayout<'_>],
   ) -> Self {
-    // Load WGSL source
-    let source = fs::read_to_string(shader_path)
-      .unwrap_or_else(|_| panic!("Failed to read shader at {shader_path}"));
+
+    let label = "PLACEHOLDER_LABEL";
 
     // Create shader module
     let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
       label: Some(&format!("{label}_module")),
-      source: wgpu::ShaderSource::Wgsl(source.into()),
+      source: wgpu::ShaderSource::Wgsl(shader_code.into()),
     });
 
     // Example: create a simple layout
@@ -51,13 +55,13 @@ impl ShaderPipeline {
       layout: Some(&layout),
       vertex: wgpu::VertexState {
         module: &module,
-        entry_point: vertex_entry,
+        entry_point: Some(vertex_entry),
         buffers: vertex_layouts,
         compilation_options: todo!(),
       },
       fragment: Some(wgpu::FragmentState {
         module: &module,
-        entry_point: fragment_entry,
+        entry_point: Some(fragment_entry),
         targets: &[Some(wgpu::ColorTargetState {
           format: config.format,
           blend: Some(wgpu::BlendState::ALPHA_BLENDING),
@@ -69,7 +73,7 @@ impl ShaderPipeline {
       depth_stencil: None,
       multisample: wgpu::MultisampleState::default(),
       multiview: None,
-        cache: todo!(),
+      cache: todo!(),
     });
 
     Self {
@@ -98,17 +102,18 @@ impl ShaderManager {
     &mut self,
     device: &wgpu::Device,
     config: &wgpu::SurfaceConfiguration,
-    path: &str,
-    name: &str,
+    shader_code: &str,
     vertex_entry: &str,
     fragment_entry: &str,
     vertex_layouts: &[wgpu::VertexBufferLayout<'_>],
   ) {
+
+    let name = "PLACEHOLDER_NAME";
+
     let pipeline = ShaderPipeline::new(
       device,
       config,
-      path,
-      name,
+      shader_code,
       vertex_entry,
       fragment_entry,
       vertex_layouts,
@@ -126,7 +131,7 @@ impl ShaderManager {
     device: &wgpu::Device,
     config: &wgpu::SurfaceConfiguration,
     name: &str,
-    shader_path: &str,
+    shader_code: &str,
     vertex_entry: &str,
     fragment_entry: &str,
     vertex_layouts: &[wgpu::VertexBufferLayout<'_>],
@@ -135,8 +140,7 @@ impl ShaderManager {
     self.load_shader(
       device,
       config,
-      shader_path,
-      name,
+      shader_code,
       vertex_entry,
       fragment_entry,
       vertex_layouts,
