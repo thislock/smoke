@@ -1,10 +1,9 @@
 use std::sync::Arc;
 
 use crate::{
-  renderer::registry::{HardwareMessage, SurfaceChanges, SyncRawWindow},
+  renderer::{registry::{HardwareMessage, SurfaceChanges, SyncRawWindow}, shaders::PipelineManager},
   update_manager::{
-    channel::{self, TaskReceiver},
-    PostInit, Task, TaskResult, TaskTag,
+    PostInit, Task, TaskResult, TaskTag, channel::{self, TaskReceiver}
   },
 };
 
@@ -104,8 +103,12 @@ impl Task<HardwareMessage> for RendererTask {
 }
 
 struct WgpuRenderer {
+  // rendering
   surface: wgpu::Surface<'static>,
-  device: wgpu::Device,
+  device: Arc<wgpu::Device>,
+  pipeline_manager: PipelineManager,
+
+  // technical stuff for the window and whatnot
   queue: wgpu::Queue,
   config: wgpu::SurfaceConfiguration,
   surface_updates: TaskReceiver<SurfaceChanges>,
@@ -245,9 +248,14 @@ impl WgpuRenderer {
       desired_maximum_frame_latency: 2,
     };
 
+    let device = Arc::new(device);
+
+    let pipeline_manager = PipelineManager::new(device.clone());
+
     Ok(Self {
       surface,
       device,
+      pipeline_manager,
       queue,
       config,
       surface_updates: window.2.clone(),

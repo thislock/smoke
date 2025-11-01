@@ -1,11 +1,25 @@
 use std::{collections::HashMap, fs, path::Path, sync::Arc};
 use arc_swap::ArcSwap;
+use asset_manager::AssetManager;
 use wgpu::util::DeviceExt;
 
 pub struct PipelineManager {
   device: Arc<wgpu::Device>,
   pipelines: Vec<ArcSwap<ShaderPipeline>>,
   asset_manager: asset_manager::AssetManager,
+}
+
+impl PipelineManager {
+  pub fn new(device: Arc<wgpu::Device>) -> Self {
+    
+    let asset_manager = AssetManager::new_local_filesystem();
+    
+    Self {
+      device, 
+      pipelines: Vec::new(),
+      asset_manager,
+    }
+  }
 }
 
 /// Represents one shader + its own render pipeline + its configuration

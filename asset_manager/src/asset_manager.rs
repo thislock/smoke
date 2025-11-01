@@ -37,7 +37,7 @@ fn program_directory() -> PathBuf {
 }
 
 impl AssetManager {
-  pub fn new_local_filesystem<Loader: 'static + AssetLoader>() -> Self {
+  pub fn new_local_filesystem() -> Self {
     Self {
       loader: Arc::new(FileSystemLoader::new(program_directory())),
       cache: RwLock::new(HashMap::new()),
