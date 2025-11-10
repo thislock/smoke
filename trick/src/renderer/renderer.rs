@@ -1,9 +1,13 @@
 use std::sync::Arc;
 
 use crate::{
-  renderer::{registry::{HardwareMessage, SurfaceChanges, SyncRawWindow}, shaders::PipelineManager},
+  renderer::{
+    registry::{HardwareMessage, SurfaceChanges, SyncRawWindow},
+    shaders::PipelineManager,
+  },
   update_manager::{
-    PostInit, Task, TaskResult, TaskTag, channel::{self, TaskReceiver}
+    PostInit, Task, TaskResult, TaskTag,
+    channel::{self, TaskReceiver},
   },
 };
 
@@ -101,6 +105,8 @@ impl Task<HardwareMessage> for RendererTask {
     Ok(())
   }
 }
+
+/// *********************** WGPU RENDERER ************************* ///
 
 struct WgpuRenderer {
   // rendering
@@ -200,6 +206,8 @@ impl WgpuRenderer {
     let adapter = async_facade(async {
       instance
         .request_adapter(&wgpu::RequestAdapterOptions {
+          // either a high power device,
+          // eg: dedicated gpu 1080ti, or a efficiency gpu, eg integrated radion gpu
           power_preference: wgpu::PowerPreference::default(),
           compatible_surface: Some(&surface),
           force_fallback_adapter: false,
@@ -240,6 +248,7 @@ impl WgpuRenderer {
     let config = wgpu::SurfaceConfiguration {
       usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
       format: surface_format,
+      // won't last, just there as a default
       width: 100,
       height: 100,
       present_mode: surface_caps.present_modes[0],
@@ -250,7 +259,7 @@ impl WgpuRenderer {
 
     let device = Arc::new(device);
 
-    let pipeline_manager = PipelineManager::new(device.clone());
+    let pipeline_manager = PipelineManager::new(device.clone(), &config);
 
     Ok(Self {
       surface,

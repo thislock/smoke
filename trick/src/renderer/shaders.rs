@@ -9,20 +9,45 @@ pub struct PipelineManager {
   asset_manager: asset_manager::AssetManager,
 }
 
+fn load_integrated_pipelines(
+  device: &wgpu::Device,
+  surface_config: &wgpu::SurfaceConfiguration,
+) -> Vec<ArcSwap<ShaderPipeline>> {
+  let mut shaders = vec![];
+
+  let render_pipeline_layout =
+    device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("Render Pipeline Layout"),
+        bind_group_layouts: &[],
+        push_constant_ranges: &[],
+    });
+
+  shaders.push(ArcSwap::new(ShaderPipeline::new(
+    device,
+    surface_config,
+    include_str!("./shaders/sample.wgsl"),
+    "vs_main",
+    "fs_main",
+    &[],
+  ).into()));
+
+  shaders
+}
+
 impl PipelineManager {
-  pub fn new(device: Arc<wgpu::Device>) -> Self {
-    
+  pub fn new(device: Arc<wgpu::Device>, surface_config: &wgpu::SurfaceConfiguration) -> Self {
     let asset_manager = AssetManager::new_local_filesystem();
-    
+
     Self {
-      device, 
-      pipelines: Vec::new(),
+      device: device.clone(),
+      pipelines: load_integrated_pipelines(&device, surface_config),
       asset_manager,
     }
   }
 }
 
 /// Represents one shader + its own render pipeline + its configuration
+#[derive(Clone)]
 pub struct ShaderPipeline {
   pub name: String,
   pub module: wgpu::ShaderModule,
@@ -71,7 +96,7 @@ impl ShaderPipeline {
         module: &module,
         entry_point: Some(vertex_entry),
         buffers: vertex_layouts,
-        compilation_options: todo!(),
+        compilation_options: Default::default(),
       },
       fragment: Some(wgpu::FragmentState {
         module: &module,
@@ -81,13 +106,14 @@ impl ShaderPipeline {
           blend: Some(wgpu::BlendState::ALPHA_BLENDING),
           write_mask: wgpu::ColorWrites::ALL,
         })],
-        compilation_options: todo!(),
+        compilation_options: Default::default(),
       }),
       primitive: wgpu::PrimitiveState::default(),
       depth_stencil: None,
       multisample: wgpu::MultisampleState::default(),
       multiview: None,
-      cache: todo!(),
+      // add this later
+      cache: None,
     });
 
     Self {
