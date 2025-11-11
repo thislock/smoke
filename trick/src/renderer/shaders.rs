@@ -1,6 +1,7 @@
 use std::{collections::HashMap, fs, path::Path, sync::Arc};
 use arc_swap::ArcSwap;
 use asset_manager::AssetManager;
+use sdl3::render;
 use wgpu::util::DeviceExt;
 
 pub struct PipelineManager {
@@ -14,13 +15,6 @@ fn load_integrated_pipelines(
   surface_config: &wgpu::SurfaceConfiguration,
 ) -> Vec<ArcSwap<ShaderPipeline>> {
   let mut shaders = vec![];
-
-  let render_pipeline_layout =
-    device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("Render Pipeline Layout"),
-        bind_group_layouts: &[],
-        push_constant_ranges: &[],
-    });
 
   shaders.push(ArcSwap::new(ShaderPipeline::new(
     device,
@@ -43,6 +37,16 @@ impl PipelineManager {
       pipelines: load_integrated_pipelines(&device, surface_config),
       asset_manager,
     }
+  }
+
+  pub fn render_all(&mut self, render_pass: &mut wgpu::RenderPass) -> anyhow::Result<()> {
+    
+    for pipeline in self.pipelines.iter() {
+      render_pass.set_pipeline(&pipeline.load().pipeline);
+      render_pass.draw(0..3, 0..1);
+    }
+    
+    Ok(())
   }
 }
 
@@ -82,22 +86,24 @@ impl ShaderPipeline {
         }),
       ];
 
-    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+    let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some(&format!("{label}_layout")),
-      bind_group_layouts: &bind_group_layouts.iter().collect::<Vec<_>>(),
+      bind_group_layouts: &[],
       push_constant_ranges: &[],
     });
 
     // Create pipeline
     let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
       label: Some(&format!("{label}_pipeline")),
-      layout: Some(&layout),
+      layout: Some(&pipeline_layout),
+      // vertex shader config
       vertex: wgpu::VertexState {
         module: &module,
         entry_point: Some(vertex_entry),
         buffers: vertex_layouts,
         compilation_options: Default::default(),
       },
+      // fragment shader config
       fragment: Some(wgpu::FragmentState {
         module: &module,
         entry_point: Some(fragment_entry),
@@ -108,7 +114,19 @@ impl ShaderPipeline {
         })],
         compilation_options: Default::default(),
       }),
-      primitive: wgpu::PrimitiveState::default(),
+      // geometry config
+      primitive: wgpu::PrimitiveState {
+        topology: wgpu::PrimitiveTopology::TriangleList, // 1.
+        strip_index_format: None,
+        front_face: wgpu::FrontFace::Ccw, // 2.
+        cull_mode: Some(wgpu::Face::Back),
+        // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
+        polygon_mode: wgpu::PolygonMode::Fill,
+        // Requires Features::DEPTH_CLIP_CONTROL
+        unclipped_depth: false,
+        // Requires Features::CONSERVATIVE_RASTERIZATION
+        conservative: false,
+      },
       depth_stencil: None,
       multisample: wgpu::MultisampleState::default(),
       multiview: None,
@@ -120,14 +138,14 @@ impl ShaderPipeline {
       name: label.to_string(),
       module,
       pipeline,
-      layout,
+      layout: pipeline_layout,
       bind_group_layouts,
     }
   }
 }
 
-/// Handles multiple shader pipelines and hot-reload support
-pub struct ShaderManager {
+/// forgot what this was for
+struct ShaderManager {
   pub pipelines: HashMap<String, Arc<ShaderPipeline>>,
 }
 

@@ -116,7 +116,7 @@ struct WgpuRenderer {
 
   // technical stuff for the window and whatnot
   queue: wgpu::Queue,
-  config: wgpu::SurfaceConfiguration,
+  surface_config: wgpu::SurfaceConfiguration,
   surface_updates: TaskReceiver<SurfaceChanges>,
 }
 
@@ -129,22 +129,23 @@ where
 
 impl WgpuRenderer {
   fn update_renderer(&mut self) -> Result<(), wgpu::SurfaceError> {
+    // update the surface resolution, if needed.
     while let Some(window_message) = self.surface_updates.try_recv() {
       match window_message {
         SurfaceChanges::UpdateResolution(win_resolution) => {
           let width = win_resolution.width;
           let height = win_resolution.height;
           if width > 0 && height > 0 {
-            self.config.width = width;
-            self.config.height = height;
-            self.surface.configure(&self.device, &self.config);
+            self.surface_config.width = width;
+            self.surface_config.height = height;
+            self.surface.configure(&self.device, &self.surface_config);
           }
         }
       }
     }
 
-    let output = self.surface.get_current_texture()?;
-    let view = output
+    let output_surface = self.surface.get_current_texture()?;
+    let view = output_surface
       .texture
       .create_view(&wgpu::TextureViewDescriptor::default());
 
@@ -155,7 +156,7 @@ impl WgpuRenderer {
       });
 
     {
-      let _render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+      let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
         label: Some("Render Pass"),
         color_attachments: &[Some(wgpu::RenderPassColorAttachment {
           view: &view,
@@ -175,10 +176,12 @@ impl WgpuRenderer {
         occlusion_query_set: None,
         timestamp_writes: None,
       });
+
+      self.pipeline_manager.render_all(&mut render_pass).unwrap();
     }
 
     self.queue.submit(std::iter::once(encoder.finish()));
-    output.present();
+    output_surface.present();
 
     Ok(())
   }
@@ -249,8 +252,7 @@ impl WgpuRenderer {
       usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
       format: surface_format,
       // won't last, just there as a default
-      width: 100,
-      height: 100,
+      width: 10, height: 10,
       present_mode: surface_caps.present_modes[0],
       alpha_mode: surface_caps.alpha_modes[0],
       view_formats: vec![],
@@ -266,7 +268,7 @@ impl WgpuRenderer {
       device,
       pipeline_manager,
       queue,
-      config,
+      surface_config: config,
       surface_updates: window.2.clone(),
     })
   }
