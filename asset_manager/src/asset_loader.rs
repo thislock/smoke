@@ -61,7 +61,7 @@ pub enum AssetEvent {
 pub struct FileSystemLoader {
   base_path: std::path::PathBuf,
   loaded_files: Mutex<HashMap<String, FileData>>,
-  watcher_tx: Option<UnboundedSender<AssetEvent>>,
+  watchers: Option<(UnboundedSender<AssetEvent>, UnboundedReceiver<AssetEvent>)>,
 }
 
 impl FileSystemLoader {
@@ -69,15 +69,21 @@ impl FileSystemLoader {
     Self {
       loaded_files: Mutex::new(HashMap::new()),
       base_path: base_path.into(),
-      watcher_tx: None,
+      watchers: None,
     }
   }
 
   /// Start watching this loader's directory for hot reload events.
-  fn watch(&mut self) -> UnboundedReceiver<AssetEvent> {
+  pub fn watch(&mut self) {
+    // if we're already watching this directory, don't add more watchers
+    if let Some(watcher) = &self.watchers {
+      if !watcher.0.is_closed() {
+        return;
+      }
+    }
     let base_path = self.base_path.clone();
-    let (tx, rx) = unbounded_channel::<AssetEvent>();
-    self.watcher_tx = Some(tx.clone());
+    self.watchers = Some(unbounded_channel::<AssetEvent>());
+    let tx = self.watchers.as_mut().unwrap().0.clone();
 
     // spawn a tokio thread to sit around and wait for filesystem interupts
     task::spawn_blocking(move || {
@@ -97,7 +103,6 @@ impl FileSystemLoader {
       }
     });
 
-    rx
   }
 }
 
@@ -171,3 +176,4 @@ impl WebLoader {
 //     Ok(bytes.to)
 //   }
 // }
+

@@ -222,7 +222,7 @@ impl WgpuRenderer {
       adapter
         .request_device(&wgpu::DeviceDescriptor {
           label: None,
-          required_features: wgpu::Features::empty(),
+          required_features: wgpu::Features::POLYGON_MODE_LINE,
           // WebGL doesn't support all of wgpu's features, so if
           // we're building for the web we'll have to disable some.
           required_limits: if cfg!(target_arch = "wasm32") {
@@ -252,7 +252,8 @@ impl WgpuRenderer {
       usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
       format: surface_format,
       // won't last, just there as a default
-      width: 10, height: 10,
+      width: 10,
+      height: 10,
       present_mode: surface_caps.present_modes[0],
       alpha_mode: surface_caps.alpha_modes[0],
       view_formats: vec![],

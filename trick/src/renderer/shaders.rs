@@ -1,7 +1,6 @@
 use std::{collections::HashMap, fs, path::Path, sync::Arc};
 use arc_swap::ArcSwap;
 use asset_manager::AssetManager;
-use sdl3::render;
 use wgpu::util::DeviceExt;
 
 pub struct PipelineManager {
@@ -10,22 +9,41 @@ pub struct PipelineManager {
   asset_manager: asset_manager::AssetManager,
 }
 
+
+/// Usage:
+/// let shaders = add_known_shader!(device, config; "a.wgsl", "b.wgsl");
+macro_rules! load_compile_time_shaders {
+    // im sorry if this is terrible, but macros are completely insane in the way they're written,
+    // so i just cheated with chatgpt so i didn't have to learn the forbiden arts
+    ($device:expr, $surface_config:expr; $( $shader_filename:literal ),+ $(,)?) => {{
+        let mut v: Vec<arc_swap::ArcSwapAny<std::sync::Arc<crate::renderer::shaders::ShaderPipeline>>> = Vec::new();
+
+        $(
+            v.push(arc_swap::ArcSwapAny::new(std::sync::Arc::new(
+                crate::renderer::shaders::ShaderPipeline::new(
+                    $shader_filename,
+                    $device,
+                    $surface_config,
+                    include_str!(concat!("shaders", "/", $shader_filename)),
+                    "vs_main",
+                    "fs_main",
+                    &[],
+                ),
+            )));
+        )*
+
+        v
+    }};
+}
+
 fn load_integrated_pipelines(
   device: &wgpu::Device,
   surface_config: &wgpu::SurfaceConfiguration,
 ) -> Vec<ArcSwap<ShaderPipeline>> {
-  let mut shaders = vec![];
-
-  shaders.push(ArcSwap::new(ShaderPipeline::new(
-    device,
-    surface_config,
-    include_str!("./shaders/sample.wgsl"),
-    "vs_main",
-    "fs_main",
-    &[],
-  ).into()));
-
-  shaders
+  load_compile_time_shaders!(
+    device, surface_config;
+    "sample.wgsl",
+  )
 }
 
 impl PipelineManager {
@@ -40,12 +58,11 @@ impl PipelineManager {
   }
 
   pub fn render_all(&mut self, render_pass: &mut wgpu::RenderPass) -> anyhow::Result<()> {
-    
     for pipeline in self.pipelines.iter() {
       render_pass.set_pipeline(&pipeline.load().pipeline);
       render_pass.draw(0..3, 0..1);
     }
-    
+
     Ok(())
   }
 }
@@ -53,7 +70,7 @@ impl PipelineManager {
 /// Represents one shader + its own render pipeline + its configuration
 #[derive(Clone)]
 pub struct ShaderPipeline {
-  pub name: String,
+  pub filename: &'static str,
   pub module: wgpu::ShaderModule,
   pub pipeline: wgpu::RenderPipeline,
   pub layout: wgpu::PipelineLayout,
@@ -62,6 +79,7 @@ pub struct ShaderPipeline {
 
 impl ShaderPipeline {
   pub fn new(
+    shader_filename: &'static str,
     device: &wgpu::Device,
     config: &wgpu::SurfaceConfiguration,
     shader_code: &str,
@@ -69,7 +87,7 @@ impl ShaderPipeline {
     fragment_entry: &str,
     vertex_layouts: &[wgpu::VertexBufferLayout<'_>],
   ) -> Self {
-    let label = "PLACEHOLDER_LABEL";
+    let label = format!("{shader_filename}");
 
     // Create shader module
     let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -81,20 +99,20 @@ impl ShaderPipeline {
     let bind_group_layouts =
       vec![
         device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-          label: Some(&format!("{label}_bgl")),
+          label: Some(&format!("{label}_bind_group_layout")),
           entries: &[],
         }),
       ];
 
     let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-      label: Some(&format!("{label}_layout")),
+      label: Some(&format!("{label}_pipeline_layout")),
       bind_group_layouts: &[],
       push_constant_ranges: &[],
     });
 
     // Create pipeline
     let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-      label: Some(&format!("{label}_pipeline")),
+      label: Some(&format!("{label}_render_pipeline")),
       layout: Some(&pipeline_layout),
       // vertex shader config
       vertex: wgpu::VertexState {
@@ -121,7 +139,7 @@ impl ShaderPipeline {
         front_face: wgpu::FrontFace::Ccw, // 2.
         cull_mode: Some(wgpu::Face::Back),
         // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
-        polygon_mode: wgpu::PolygonMode::Fill,
+        polygon_mode: wgpu::PolygonMode::Line,
         // Requires Features::DEPTH_CLIP_CONTROL
         unclipped_depth: false,
         // Requires Features::CONSERVATIVE_RASTERIZATION
@@ -135,72 +153,11 @@ impl ShaderPipeline {
     });
 
     Self {
-      name: label.to_string(),
+      filename: shader_filename,
       module,
       pipeline,
       layout: pipeline_layout,
       bind_group_layouts,
     }
-  }
-}
-
-/// forgot what this was for
-struct ShaderManager {
-  pub pipelines: HashMap<String, Arc<ShaderPipeline>>,
-}
-
-impl ShaderManager {
-  pub fn new() -> Self {
-    Self {
-      pipelines: HashMap::new(),
-    }
-  }
-
-  pub fn load_shader(
-    &mut self,
-    device: &wgpu::Device,
-    config: &wgpu::SurfaceConfiguration,
-    shader_code: &str,
-    vertex_entry: &str,
-    fragment_entry: &str,
-    vertex_layouts: &[wgpu::VertexBufferLayout<'_>],
-  ) {
-    let name = "PLACEHOLDER_NAME";
-
-    let pipeline = ShaderPipeline::new(
-      device,
-      config,
-      shader_code,
-      vertex_entry,
-      fragment_entry,
-      vertex_layouts,
-    );
-    self.pipelines.insert(name.to_string(), Arc::new(pipeline));
-  }
-
-  pub fn get(&self, name: &str) -> Option<Arc<ShaderPipeline>> {
-    self.pipelines.get(name).cloned()
-  }
-
-  /// Example recompile method for hot reload
-  pub fn reload_shader(
-    &mut self,
-    device: &wgpu::Device,
-    config: &wgpu::SurfaceConfiguration,
-    name: &str,
-    shader_code: &str,
-    vertex_entry: &str,
-    fragment_entry: &str,
-    vertex_layouts: &[wgpu::VertexBufferLayout<'_>],
-  ) {
-    println!("Reloading shader: {name}");
-    self.load_shader(
-      device,
-      config,
-      shader_code,
-      vertex_entry,
-      fragment_entry,
-      vertex_layouts,
-    );
   }
 }
