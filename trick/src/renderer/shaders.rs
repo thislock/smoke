@@ -9,7 +9,6 @@ pub struct PipelineManager {
   asset_manager: asset_manager::AssetManager,
 }
 
-
 /// Usage:
 /// let shaders = add_known_shader!(device, config; "a.wgsl", "b.wgsl");
 macro_rules! load_compile_time_shaders {
@@ -87,13 +86,10 @@ impl ShaderPipeline {
     fragment_entry: &str,
     vertex_layouts: &[wgpu::VertexBufferLayout<'_>],
   ) -> Self {
-    let label = format!("{shader_filename}");
+    let label: String = format!("{shader_filename}");
 
     // Create shader module
-    let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-      label: Some(&format!("{label}_module")),
-      source: wgpu::ShaderSource::Wgsl(shader_code.into()),
-    });
+    let module = init_shader_module(device, shader_code, &label);
 
     // Example: create a simple layout
     let bind_group_layouts =
@@ -111,46 +107,16 @@ impl ShaderPipeline {
     });
 
     // Create pipeline
-    let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-      label: Some(&format!("{label}_render_pipeline")),
-      layout: Some(&pipeline_layout),
-      // vertex shader config
-      vertex: wgpu::VertexState {
-        module: &module,
-        entry_point: Some(vertex_entry),
-        buffers: vertex_layouts,
-        compilation_options: Default::default(),
-      },
-      // fragment shader config
-      fragment: Some(wgpu::FragmentState {
-        module: &module,
-        entry_point: Some(fragment_entry),
-        targets: &[Some(wgpu::ColorTargetState {
-          format: config.format,
-          blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-          write_mask: wgpu::ColorWrites::ALL,
-        })],
-        compilation_options: Default::default(),
-      }),
-      // geometry config
-      primitive: wgpu::PrimitiveState {
-        topology: wgpu::PrimitiveTopology::TriangleList, // 1.
-        strip_index_format: None,
-        front_face: wgpu::FrontFace::Ccw, // 2.
-        cull_mode: Some(wgpu::Face::Back),
-        // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
-        polygon_mode: wgpu::PolygonMode::Fill,
-        // Requires Features::DEPTH_CLIP_CONTROL
-        unclipped_depth: false,
-        // Requires Features::CONSERVATIVE_RASTERIZATION
-        conservative: false,
-      },
-      depth_stencil: None,
-      multisample: wgpu::MultisampleState::default(),
-      multiview: None,
-      // add this later
-      cache: None,
-    });
+    let pipeline = create_render_pipeline(
+      device,
+      config,
+      vertex_entry,
+      fragment_entry,
+      vertex_layouts,
+      &module,
+      &pipeline_layout,
+      &label,
+    );
 
     Self {
       filename: shader_filename,
@@ -160,4 +126,64 @@ impl ShaderPipeline {
       bind_group_layouts,
     }
   }
+}
+
+fn create_render_pipeline(
+  device: &wgpu::Device,
+  config: &wgpu::SurfaceConfiguration,
+  vertex_entry: &str,
+  fragment_entry: &str,
+  vertex_layouts: &[wgpu::VertexBufferLayout<'_>],
+  module: &wgpu::ShaderModule,
+  pipeline_layout: &wgpu::PipelineLayout,
+  label: &str,
+) -> wgpu::RenderPipeline {
+  device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+    label: Some(&format!("{label}_render_pipeline")),
+    layout: Some(pipeline_layout),
+    // vertex shader config
+    vertex: wgpu::VertexState {
+      module: module,
+      entry_point: Some(vertex_entry),
+      buffers: vertex_layouts,
+      compilation_options: Default::default(),
+    },
+    // fragment shader config
+    fragment: Some(wgpu::FragmentState {
+      module: module,
+      entry_point: Some(fragment_entry),
+      targets: &[Some(wgpu::ColorTargetState {
+        format: config.format,
+        blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+        write_mask: wgpu::ColorWrites::ALL,
+      })],
+      compilation_options: Default::default(),
+    }),
+    // geometry config
+    primitive: wgpu::PrimitiveState {
+      topology: wgpu::PrimitiveTopology::TriangleList, // 1.
+      strip_index_format: None,
+      front_face: wgpu::FrontFace::Ccw, // 2.
+      cull_mode: Some(wgpu::Face::Back),
+      // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
+      polygon_mode: wgpu::PolygonMode::Fill,
+      // Requires Features::DEPTH_CLIP_CONTROL
+      unclipped_depth: false,
+      // Requires Features::CONSERVATIVE_RASTERIZATION
+      conservative: false,
+    },
+    depth_stencil: None,
+    multisample: wgpu::MultisampleState::default(),
+    multiview: None,
+    // add this later
+    cache: None,
+  })
+}
+
+fn init_shader_module(device: &wgpu::Device, shader_code: &str, label: &str) -> wgpu::ShaderModule {
+  let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+    label: Some(&format!("{label}_module")),
+    source: wgpu::ShaderSource::Wgsl(shader_code.into()),
+  });
+  module
 }
