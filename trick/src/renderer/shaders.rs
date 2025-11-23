@@ -3,6 +3,53 @@ use arc_swap::ArcSwap;
 use asset_manager::AssetManager;
 use wgpu::util::DeviceExt;
 
+trait WgpuVertex {
+  const VERTEX_BUFFER_LAYOUT: wgpu::VertexBufferLayout<'static>;
+}
+
+// lib.rs
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct ColoredVertex {
+  position: [f32; 3],
+  color: [f32; 3],
+}
+
+impl WgpuVertex for ColoredVertex {
+  const VERTEX_BUFFER_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
+      array_stride: std::mem::size_of::<ColoredVertex>() as wgpu::BufferAddress, // 1.
+      step_mode: wgpu::VertexStepMode::Vertex,                            // 2.
+      attributes: &[
+        // 3.
+        wgpu::VertexAttribute {
+          offset: 0,                             // 4.
+          shader_location: 0,                    // 5.
+          format: wgpu::VertexFormat::Float32x3, // 6.
+        },
+        wgpu::VertexAttribute {
+          offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
+          shader_location: 1,
+          format: wgpu::VertexFormat::Float32x3,
+        },
+      ],
+    };
+}
+
+const STATIC_TEST_MODEL: &[ColoredVertex] = &[
+  ColoredVertex {
+    position: [0.0, 0.5, 0.0],
+    color: [1.0, 0.0, 0.0],
+  },
+  ColoredVertex {
+    position: [-0.5, -0.5, 0.0],
+    color: [0.0, 1.0, 0.0],
+  },
+  ColoredVertex {
+    position: [0.5, -0.5, 0.0],
+    color: [0.0, 0.0, 1.0],
+  },
+];
+
 pub struct PipelineManager {
   device: Arc<wgpu::Device>,
   pipelines: Vec<ArcSwap<ShaderPipeline>>,
@@ -14,7 +61,7 @@ pub struct PipelineManager {
 macro_rules! load_compile_time_shaders {
     // im sorry if this is terrible, but macros are completely insane in the way they're written,
     // so i just cheated with chatgpt so i didn't have to learn the forbiden arts
-    ($device:expr, $surface_config:expr; $( $shader_filename:literal ),+ $(,)?) => {{
+    ($vertex_layouts:expr, $device:expr, $surface_config:expr; $( $shader_filename:literal ),+ $(,)?) => {{
         let mut v: Vec<arc_swap::ArcSwapAny<std::sync::Arc<crate::renderer::shaders::ShaderPipeline>>> = Vec::new();
 
         $(
@@ -26,7 +73,7 @@ macro_rules! load_compile_time_shaders {
                     include_str!(concat!("shaders", "/", $shader_filename)),
                     "vs_main",
                     "fs_main",
-                    &[],
+                    $vertex_layouts,
                 ),
             )));
         )*
@@ -39,8 +86,11 @@ fn load_integrated_pipelines(
   device: &wgpu::Device,
   surface_config: &wgpu::SurfaceConfiguration,
 ) -> Vec<ArcSwap<ShaderPipeline>> {
+
+  let colored_vertex_desc = ColoredVertex::VERTEX_BUFFER_LAYOUT;
+
   load_compile_time_shaders!(
-    device, surface_config;
+    &[colored_vertex_desc], device, surface_config;
     "sample.wgsl",
   )
 }
@@ -74,6 +124,7 @@ pub struct ShaderPipeline {
   pub pipeline: wgpu::RenderPipeline,
   pub layout: wgpu::PipelineLayout,
   pub bind_group_layouts: Vec<wgpu::BindGroupLayout>,
+  pub vertex_buffer: wgpu::Buffer,
 }
 
 impl ShaderPipeline {
@@ -118,7 +169,10 @@ impl ShaderPipeline {
       &label,
     );
 
+    let vertex_buffer = init_vertex_buffer(device);
+
     Self {
+      vertex_buffer,
       filename: shader_filename,
       module,
       pipeline,
@@ -126,6 +180,14 @@ impl ShaderPipeline {
       bind_group_layouts,
     }
   }
+}
+
+fn init_vertex_buffer(device: &wgpu::Device) -> wgpu::Buffer {
+  device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+    label: Some("Vertex Buffer"),
+    contents: bytemuck::cast_slice(STATIC_TEST_MODEL),
+    usage: wgpu::BufferUsages::VERTEX,
+  })
 }
 
 fn create_render_pipeline(

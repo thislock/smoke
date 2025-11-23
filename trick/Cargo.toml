@@ -22,6 +22,7 @@ flume = "0.11.1"
 raw-window-handle = "0.6.2"
 sdl3 = {version = "0.15.1", features = ["raw-window-handle"]}
 wgpu = "27.0.0"
+bytemuck = "1.24.0"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 
