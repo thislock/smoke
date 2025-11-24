@@ -91,7 +91,7 @@ fn load_integrated_pipelines(
 
   load_compile_time_shaders!(
     &[colored_vertex_desc], device, surface_config;
-    "sample.wgsl",
+    "colored_vertex.wgsl",
   )
 }
 
@@ -108,7 +108,9 @@ impl PipelineManager {
 
   pub fn render_all(&mut self, render_pass: &mut wgpu::RenderPass) -> anyhow::Result<()> {
     for pipeline in self.pipelines.iter() {
-      render_pass.set_pipeline(&pipeline.load().pipeline);
+      let pipeline = pipeline.load();
+      render_pass.set_pipeline(&pipeline.pipeline);
+      render_pass.set_vertex_buffer(0, pipeline.vertex_buffer.slice(..));
       render_pass.draw(0..3, 0..1);
     }
 
