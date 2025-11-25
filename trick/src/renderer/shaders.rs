@@ -17,37 +17,61 @@ struct ColoredVertex {
 
 impl WgpuVertex for ColoredVertex {
   const VERTEX_BUFFER_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
-      array_stride: std::mem::size_of::<ColoredVertex>() as wgpu::BufferAddress, // 1.
-      step_mode: wgpu::VertexStepMode::Vertex,                            // 2.
-      attributes: &[
-        // 3.
-        wgpu::VertexAttribute {
-          offset: 0,                             // 4.
-          shader_location: 0,                    // 5.
-          format: wgpu::VertexFormat::Float32x3, // 6.
-        },
-        wgpu::VertexAttribute {
-          offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
-          shader_location: 1,
-          format: wgpu::VertexFormat::Float32x3,
-        },
-      ],
-    };
+    array_stride: std::mem::size_of::<ColoredVertex>() as wgpu::BufferAddress, // 1.
+    step_mode: wgpu::VertexStepMode::Vertex,                                   // 2.
+    attributes: &[
+      // 3.
+      wgpu::VertexAttribute {
+        offset: 0,                             // 4.
+        shader_location: 0,                    // 5.
+        format: wgpu::VertexFormat::Float32x3, // 6.
+      },
+      wgpu::VertexAttribute {
+        offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
+        shader_location: 1,
+        format: wgpu::VertexFormat::Float32x3,
+      },
+    ],
+  };
 }
 
 const STATIC_TEST_MODEL: &[ColoredVertex] = &[
   ColoredVertex {
-    position: [0.0, 0.5, 0.0],
-    color: [1.0, 0.0, 0.0],
-  },
+    position: [-0.0868241, 0.49240386, 0.0],
+    color: [0.5, 0.0, 0.5],
+  }, // A
   ColoredVertex {
-    position: [-0.5, -0.5, 0.0],
-    color: [0.0, 1.0, 0.0],
-  },
+    position: [-0.49513406, 0.06958647, 0.0],
+    color: [0.5, 0.0, 0.5],
+  }, // B
   ColoredVertex {
-    position: [0.5, -0.5, 0.0],
-    color: [0.0, 0.0, 1.0],
-  },
+    position: [0.44147372, 0.2347359, 0.0],
+    color: [0.5, 0.0, 0.5],
+  }, // E
+  ColoredVertex {
+    position: [-0.49513406, 0.06958647, 0.0],
+    color: [0.5, 0.0, 0.5],
+  }, // B
+  ColoredVertex {
+    position: [-0.21918549, -0.44939706, 0.0],
+    color: [0.5, 0.0, 0.5],
+  }, // C
+  ColoredVertex {
+    position: [0.44147372, 0.2347359, 0.0],
+    color: [0.5, 0.0, 0.5],
+  }, // E
+  ColoredVertex {
+    position: [-0.21918549, -0.44939706, 0.0],
+    color: [0.5, 0.0, 0.5],
+  }, // C
+  ColoredVertex {
+    position: [0.35966998, -0.3473291, 0.0],
+    color: [0.5, 0.0, 0.5],
+  }, // D
+  ColoredVertex {
+    position: [0.44147372, 0.2347359, 0.0],
+    color: [0.5, 0.0, 0.5],
+  }, // E
 ];
 
 pub struct PipelineManager {
@@ -86,7 +110,6 @@ fn load_integrated_pipelines(
   device: &wgpu::Device,
   surface_config: &wgpu::SurfaceConfiguration,
 ) -> Vec<ArcSwap<ShaderPipeline>> {
-
   let colored_vertex_desc = ColoredVertex::VERTEX_BUFFER_LAYOUT;
 
   load_compile_time_shaders!(
@@ -111,14 +134,18 @@ impl PipelineManager {
       let pipeline = pipeline.load();
       render_pass.set_pipeline(&pipeline.pipeline);
       render_pass.set_vertex_buffer(0, pipeline.vertex_buffer.slice(..));
-      render_pass.draw(0..3, 0..1);
+      render_pass.draw(0..9, 0..1);
     }
 
     Ok(())
   }
 }
 
-/// Represents one shader + its own render pipeline + its configuration
+pub struct GeometryBuffer {
+
+}
+
+/// a material, with a bunch of mesh data to boot
 #[derive(Clone)]
 pub struct ShaderPipeline {
   pub filename: &'static str,
@@ -126,6 +153,7 @@ pub struct ShaderPipeline {
   pub pipeline: wgpu::RenderPipeline,
   pub layout: wgpu::PipelineLayout,
   pub bind_group_layouts: Vec<wgpu::BindGroupLayout>,
+  // pub geometry: ArcSwap<GeometryBuffer>,
   pub vertex_buffer: wgpu::Buffer,
 }
 
