@@ -35,35 +35,21 @@ impl WgpuVertex for ColoredVertex {
   };
 }
 
+pub struct Model {
+  vertexes: Arc<[ColoredVertex]>,
+  indicies: Arc<[u16]>,
+}
+
+impl Model {
+  pub fn new(vertexes: &[ColoredVertex], indicies: &[u16]) -> Self {
+    Self {
+      vertexes: Arc::from(vertexes),
+      indicies: Arc::from(indicies),
+    }
+  }
+}
+
 const STATIC_TEST_MODEL: &[ColoredVertex] = &[
-  ColoredVertex {
-    position: [-1.0, -1.0, 0.0],
-    color: [1.0, 1.0, 1.0],
-  },
-  ColoredVertex {
-    position: [1.0, -1.0, 0.0],
-    color: [1.0, 1.0, 1.0],
-  },
-  ColoredVertex {
-    position: [-1.0, 1.0, 0.0],
-    color: [1.0, 1.0, 1.0],
-  },
-
-  ColoredVertex {
-    position: [1.0, 1.0, 0.0],
-    color: [1.0, 1.0, 1.0],
-  },
-  ColoredVertex {
-    position: [-1.0, 1.0, 0.0],
-    color: [1.0, 1.0, 1.0],
-  },
-  ColoredVertex {
-    position: [1.0, -1.0, 0.0],
-    color: [1.0, 1.0, 1.0],
-  },
-];
-
-const STATIC_POLYGON_MODEL: &[ColoredVertex] = &[
   ColoredVertex {
     position: [-0.0868241, 0.49240386, 0.0],
     color: [0.5, 0.0, 0.5],
@@ -72,22 +58,6 @@ const STATIC_POLYGON_MODEL: &[ColoredVertex] = &[
     position: [-0.49513406, 0.06958647, 0.0],
     color: [0.5, 0.0, 0.5],
   }, // B
-  ColoredVertex {
-    position: [0.44147372, 0.2347359, 0.0],
-    color: [0.5, 0.0, 0.5],
-  }, // E
-  ColoredVertex {
-    position: [-0.49513406, 0.06958647, 0.0],
-    color: [0.5, 0.0, 0.5],
-  }, // B
-  ColoredVertex {
-    position: [-0.21918549, -0.44939706, 0.0],
-    color: [0.5, 0.0, 0.5],
-  }, // C
-  ColoredVertex {
-    position: [0.44147372, 0.2347359, 0.0],
-    color: [0.5, 0.0, 0.5],
-  }, // E
   ColoredVertex {
     position: [-0.21918549, -0.44939706, 0.0],
     color: [0.5, 0.0, 0.5],
@@ -101,6 +71,8 @@ const STATIC_POLYGON_MODEL: &[ColoredVertex] = &[
     color: [0.5, 0.0, 0.5],
   }, // E
 ];
+
+const INDICES: &[u16] = &[0, 1, 4, 1, 2, 4, 2, 3, 4];
 
 pub struct PipelineManager {
   device: Arc<wgpu::Device>,
@@ -161,26 +133,65 @@ impl PipelineManager {
     for pipeline in self.pipelines.iter() {
       let pipeline = pipeline.load();
       render_pass.set_pipeline(&pipeline.pipeline);
-      render_pass.set_vertex_buffer(0, pipeline.vertex_buffer.slice(..));
-      render_pass.draw(0..6, 0..1);
+      
     }
 
     Ok(())
   }
 }
 
-pub struct GeometryBuffer {}
+pub struct GeometryBuffer {
+  pub vertex_buffer: wgpu::Buffer,
+  pub index_buffer: wgpu::Buffer,
+  pub model: Model,
+}
+
+impl GeometryBuffer {
+  
+  fn new(device: &wgpu::Device, model: Model) -> Self {
+    
+    let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+      label: Some("Vertex Buffer"),
+      contents: bytemuck::cast_slice(&model.vertexes),
+      usage: wgpu::BufferUsages::VERTEX,
+    });
+    
+    let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+      label: Some("Index Buffer"),
+      contents: bytemuck::cast_slice(&model.indicies),
+      usage: wgpu::BufferUsages::INDEX,
+    });
+
+    Self {
+      vertex_buffer,
+      index_buffer,
+      model,
+    }
+    
+  }
+
+  #[inline]
+  pub fn get_indicies(&self) -> u32 {
+    self.model.indicies.len() as u32
+  }
+
+  pub fn render_with_current_pipeline(&self, render_pass: &mut wgpu::RenderPass) {
+    render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+    render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+    render_pass.draw_indexed(0..self.get_indicies(), 0, 0..1);
+  }
+  
+}
 
 /// a material, with a bunch of mesh data to boot
-#[derive(Clone)]
 pub struct ShaderPipeline {
   pub filename: &'static str,
   pub module: wgpu::ShaderModule,
   pub pipeline: wgpu::RenderPipeline,
   pub layout: wgpu::PipelineLayout,
   pub bind_group_layouts: Vec<wgpu::BindGroupLayout>,
-  // pub geometry: ArcSwap<GeometryBuffer>,
-  pub vertex_buffer: wgpu::Buffer,
+  // reference to the pool of geometry
+  pub geometry: Vec<ArcSwap<GeometryBuffer>>,
 }
 
 impl ShaderPipeline {
@@ -225,10 +236,10 @@ impl ShaderPipeline {
       &label,
     );
 
-    let vertex_buffer = init_vertex_buffer(device);
-
     Self {
-      vertex_buffer,
+      // more added later, as more meshes are applied to the same material.
+      geometry: Vec::new(),
+
       filename: shader_filename,
       module,
       pipeline,
