@@ -141,9 +141,7 @@ impl PipelineManager {
   }
 }
 
-pub struct GeometryBuffer {
-
-}
+pub struct GeometryBuffer {}
 
 /// a material, with a bunch of mesh data to boot
 #[derive(Clone)]

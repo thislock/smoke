@@ -21,5 +21,8 @@ fn vs_main(
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-  return vec4<f32>(in.color, 1.0);
+  // convert the sRGB color into RGB (what wpu expects, relative to what the user expects)
+  let rgb = ((in.color + 0.055) / 1.055);
+  let sRGB = pow(rgb, vec3f(2.4));
+  return vec4<f32>(sRGB, 1.0);
 }
