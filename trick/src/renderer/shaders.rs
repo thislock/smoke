@@ -37,6 +37,34 @@ impl WgpuVertex for ColoredVertex {
 
 const STATIC_TEST_MODEL: &[ColoredVertex] = &[
   ColoredVertex {
+    position: [-1.0, -1.0, 0.0],
+    color: [1.0, 1.0, 1.0],
+  },
+  ColoredVertex {
+    position: [1.0, -1.0, 0.0],
+    color: [1.0, 1.0, 1.0],
+  },
+  ColoredVertex {
+    position: [-1.0, 1.0, 0.0],
+    color: [1.0, 1.0, 1.0],
+  },
+
+  ColoredVertex {
+    position: [1.0, 1.0, 0.0],
+    color: [1.0, 1.0, 1.0],
+  },
+  ColoredVertex {
+    position: [-1.0, 1.0, 0.0],
+    color: [1.0, 1.0, 1.0],
+  },
+  ColoredVertex {
+    position: [1.0, -1.0, 0.0],
+    color: [1.0, 1.0, 1.0],
+  },
+];
+
+const STATIC_POLYGON_MODEL: &[ColoredVertex] = &[
+  ColoredVertex {
     position: [-0.0868241, 0.49240386, 0.0],
     color: [0.5, 0.0, 0.5],
   }, // A
@@ -134,7 +162,7 @@ impl PipelineManager {
       let pipeline = pipeline.load();
       render_pass.set_pipeline(&pipeline.pipeline);
       render_pass.set_vertex_buffer(0, pipeline.vertex_buffer.slice(..));
-      render_pass.draw(0..9, 0..1);
+      render_pass.draw(0..6, 0..1);
     }
 
     Ok(())
