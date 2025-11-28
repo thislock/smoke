@@ -120,7 +120,7 @@ struct WgpuRenderer {
   surface_updates: TaskReceiver<SurfaceChanges>,
 }
 
-pub fn async_facade<F, T>(future: F) -> T
+fn async_facade<F, T>(future: F) -> T
 where
   F: Future<Output = T>,
 {

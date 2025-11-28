@@ -1,6 +1,7 @@
 use std::{collections::HashMap, fs, path::Path, sync::Arc};
 use arc_swap::ArcSwap;
 use asset_manager::AssetManager;
+use async_std::sync::RwLock;
 use wgpu::util::DeviceExt;
 
 trait WgpuVertex {
@@ -80,10 +81,10 @@ macro_rules! load_compile_time_shaders {
     // im sorry if this is terrible, but macros are completely insane in the way they're written,
     // so i just cheated with chatgpt so i didn't have to learn the forbiden arts
     ($vertex_layouts:expr, $device:expr, $surface_config:expr; $( $shader_filename:literal ),+ $(,)?) => {{
-        let mut v: Vec<arc_swap::ArcSwapAny<std::sync::Arc<crate::renderer::shaders::ShaderPipeline>>> = Vec::new();
+        let mut v: Vec<RwLock<crate::renderer::shaders::ShaderPipeline>> = Vec::new();
 
         $(
-            v.push(arc_swap::ArcSwapAny::new(std::sync::Arc::new(
+            v.push(RwLock::new(
                 crate::renderer::shaders::ShaderPipeline::new(
                     $shader_filename,
                     $device,
@@ -93,7 +94,7 @@ macro_rules! load_compile_time_shaders {
                     "fs_main",
                     $vertex_layouts,
                 ),
-            )));
+            ));
         )*
 
         v
@@ -101,7 +102,7 @@ macro_rules! load_compile_time_shaders {
 }
 pub struct PipelineManager {
   device: Arc<wgpu::Device>,
-  pipelines: Vec<ArcSwap<ShaderPipeline>>,
+  pipelines: Vec<RwLock<ShaderPipeline>>,
   asset_manager: asset_manager::AssetManager,
 }
 
@@ -109,7 +110,7 @@ pub struct PipelineManager {
 fn load_integrated_pipelines(
   device: &wgpu::Device,
   surface_config: &wgpu::SurfaceConfiguration,
-) -> Vec<ArcSwap<ShaderPipeline>> {
+) -> Vec<RwLock<ShaderPipeline>> {
   let colored_vertex_desc = ColoredVertex::VERTEX_BUFFER_LAYOUT;
 
   load_compile_time_shaders!(
@@ -122,18 +123,31 @@ impl PipelineManager {
   pub fn new(device: Arc<wgpu::Device>, surface_config: &wgpu::SurfaceConfiguration) -> Self {
     let asset_manager = AssetManager::new_local_filesystem();
 
+    let test_model = Model::new(STATIC_TEST_MODEL, INDICES);
+
+    // just some test models, while loading support is developed.
+    let mut geometry: Vec<RwLock<GeometryBuffer>> = vec![
+      RwLock::new(GeometryBuffer::new(&device.clone(), test_model))
+    ];
+
+    let mut pipelines =load_integrated_pipelines(&device, surface_config);
+    for pipeline in pipelines {
+      //let mut sample_geometry = geometry.clone();
+      // this means
+      pipeline.get_mut().geometry.get_mut().append(&mut geometry);
+    }
+
     Self {
       device: device.clone(),
-      pipelines: load_integrated_pipelines(&device, surface_config),
+      pipelines,
       asset_manager,
     }
   }
 
   pub fn render_all(&mut self, render_pass: &mut wgpu::RenderPass) -> anyhow::Result<()> {
     for pipeline in self.pipelines.iter() {
-      let pipeline = pipeline.load();
-      render_pass.set_pipeline(&pipeline.pipeline);
-      
+      let pipeline = async_std::task::block_on(pipeline.read().await);
+      render_pass.set_pipeline();
     }
 
     Ok(())
@@ -191,7 +205,7 @@ pub struct ShaderPipeline {
   pub layout: wgpu::PipelineLayout,
   pub bind_group_layouts: Vec<wgpu::BindGroupLayout>,
   // reference to the pool of geometry
-  pub geometry: Vec<ArcSwap<GeometryBuffer>>,
+  pub geometry: RwLock<Vec<GeometryBuffer>>,
 }
 
 impl ShaderPipeline {
@@ -238,7 +252,7 @@ impl ShaderPipeline {
 
     Self {
       // more added later, as more meshes are applied to the same material.
-      geometry: Vec::new(),
+      geometry: RwLock::new((Vec::new())),
 
       filename: shader_filename,
       module,
