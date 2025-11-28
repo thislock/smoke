@@ -74,12 +74,6 @@ const STATIC_TEST_MODEL: &[ColoredVertex] = &[
 
 const INDICES: &[u16] = &[0, 1, 4, 1, 2, 4, 2, 3, 4];
 
-pub struct PipelineManager {
-  device: Arc<wgpu::Device>,
-  pipelines: Vec<ArcSwap<ShaderPipeline>>,
-  asset_manager: asset_manager::AssetManager,
-}
-
 /// Usage:
 /// let shaders = add_known_shader!(device, config; "a.wgsl", "b.wgsl");
 macro_rules! load_compile_time_shaders {
@@ -105,6 +99,12 @@ macro_rules! load_compile_time_shaders {
         v
     }};
 }
+pub struct PipelineManager {
+  device: Arc<wgpu::Device>,
+  pipelines: Vec<ArcSwap<ShaderPipeline>>,
+  asset_manager: asset_manager::AssetManager,
+}
+
 
 fn load_integrated_pipelines(
   device: &wgpu::Device,
