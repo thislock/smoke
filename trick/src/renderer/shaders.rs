@@ -1,7 +1,7 @@
 use std::{collections::HashMap, fs, path::Path, sync::Arc};
 use arc_swap::ArcSwap;
 use asset_manager::AssetManager;
-use async_std::sync::RwLock;
+use std::sync::RwLock;
 use wgpu::util::DeviceExt;
 
 trait WgpuVertex {
@@ -126,15 +126,13 @@ impl PipelineManager {
     let test_model = Model::new(STATIC_TEST_MODEL, INDICES);
 
     // just some test models, while loading support is developed.
-    let mut geometry: Vec<RwLock<GeometryBuffer>> = vec![
-      RwLock::new(GeometryBuffer::new(&device.clone(), test_model))
+    let mut geometry: Vec<GeometryBuffer> = vec![
+      GeometryBuffer::new(&device.clone(), test_model)
     ];
 
-    let mut pipelines =load_integrated_pipelines(&device, surface_config);
-    for pipeline in pipelines {
-      //let mut sample_geometry = geometry.clone();
-      // this means
-      pipeline.get_mut().geometry.get_mut().append(&mut geometry);
+    let pipelines = load_integrated_pipelines(&device, surface_config);
+    for pipeline in &pipelines {
+      pipeline.read();
     }
 
     Self {
@@ -146,8 +144,8 @@ impl PipelineManager {
 
   pub fn render_all(&mut self, render_pass: &mut wgpu::RenderPass) -> anyhow::Result<()> {
     for pipeline in self.pipelines.iter() {
-      let pipeline = async_std::task::block_on(pipeline.read().await);
-      render_pass.set_pipeline();
+      let pipeline = pipeline.read().expect("FRICKKKKKKKKKK");
+      render_pass.set_pipeline(&*&pipeline.pipeline);
     }
 
     Ok(())
