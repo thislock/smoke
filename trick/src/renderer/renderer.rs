@@ -254,7 +254,8 @@ impl WgpuRenderer {
       // won't last, just there as a default
       width: 10,
       height: 10,
-      present_mode: surface_caps.present_modes[0],
+      // for now, just set to normal Vsync mode, compatible everywhere; But it does have latency issues, so i may need to revise it later, but honestly it should be fine.
+      present_mode: wgpu::PresentMode::Fifo,
       alpha_mode: surface_caps.alpha_modes[0],
       view_formats: vec![],
       desired_maximum_frame_latency: 2,
