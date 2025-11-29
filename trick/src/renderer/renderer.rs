@@ -15,7 +15,36 @@ use crate::{
 pub const RENDERER_CHANNEL: &'static str = "IPEPIFSUIHDFIUHSIHGIHSFUIGHIYWHWRURUURURURURUUR"; // computers don't need clarity
 const RENDERER_TAGS: &'static [TaskTag] = &[];
 
+use crate::task_routine::TaskRoutine;
+
+pub struct RenderRoutineInput {
+
+}
+pub enum RenderRoutineOutput {
+  Good,
+  Bad,
+}
+
+impl TaskRoutine for RendererTask {
+  type RoutineInput = RenderRoutineInput;
+  type RoutineOutput = RenderRoutineOutput;
+  
+  type RoutineFn = fn(Self::RoutineInput) -> Self::RoutineOutput;
+
+  fn add_routine(&mut self, routine: Self::RoutineFn) {
+    self.routines.push(routine);
+  }
+
+  fn run_routines(&mut self) {
+    let mut output = vec![];
+    for routine in &self.routines {
+      output.push(routine(RenderRoutineInput {  }));
+    }
+  }
+}
+
 pub struct RendererTask {
+  routines: Vec<<RendererTask as TaskRoutine>::RoutineFn>,
   wgpu: Option<WgpuRenderer>,
   channel_registry: Option<channel::ChannelRegistry<HardwareMessage>>,
   renderer_channel: Option<channel::TaskChannel<HardwareMessage>>,
@@ -44,6 +73,7 @@ impl RendererTask {
 impl Default for RendererTask {
   fn default() -> Self {
     Self {
+      routines: Vec::new(),
       wgpu: None,
       channel_registry: None,
       renderer_channel: None,
@@ -66,6 +96,9 @@ impl Task<HardwareMessage> for RendererTask {
   }
 
   fn update(&mut self) -> TaskResult {
+
+    self.run_routines();
+
     let is_wgpu_initialised = self.wgpu.is_none();
     let mut new_wgpu = None;
 
