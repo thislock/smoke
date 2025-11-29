@@ -107,7 +107,6 @@ pub struct PipelineManager {
   asset_manager: asset_manager::AssetManager,
 }
 
-
 fn load_integrated_pipelines(
   device: &wgpu::Device,
   surface_config: &wgpu::SurfaceConfiguration,
@@ -129,7 +128,7 @@ impl PipelineManager {
     let pipelines = load_integrated_pipelines(&device, surface_config);
     for pipeline in &pipelines {
       let mut write_pipeline = pipeline.write().unwrap();
-      
+
       let geometry = GeometryBuffer::new(&device, test_model.clone());
       write_pipeline.geometry.push(RwLock::new(geometry));
     }
@@ -143,10 +142,11 @@ impl PipelineManager {
 
   pub fn render_all(&mut self, render_pass: &mut wgpu::RenderPass) -> anyhow::Result<()> {
     for pipeline in self.pipelines.iter() {
-      let pipeline = pipeline.read().expect("FRICKKKKKKKKKK");
+      let pipeline = pipeline.read().expect("PIPELINE UNWRAP OVERLAP");
       render_pass.set_pipeline(&*&pipeline.pipeline);
       for pipeline_geometry in (*pipeline.geometry).iter() {
         // rendering isn't essential, the program wont go down because i need to render something lol
+        // might cause some random flickering though, but not that big a deal.
         if let Ok(read_geometery) = pipeline_geometry.read() {
           read_geometery.render_with_current_pipeline(render_pass);
         }
@@ -164,15 +164,13 @@ pub struct GeometryBuffer {
 }
 
 impl GeometryBuffer {
-  
   fn new(device: &wgpu::Device, model: Model) -> Self {
-    
     let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
       label: Some("Vertex Buffer"),
       contents: bytemuck::cast_slice(&model.vertexes),
       usage: wgpu::BufferUsages::VERTEX,
     });
-    
+
     let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
       label: Some("Index Buffer"),
       contents: bytemuck::cast_slice(&model.indicies),
@@ -184,7 +182,6 @@ impl GeometryBuffer {
       index_buffer,
       model,
     }
-    
   }
 
   #[inline]
@@ -197,7 +194,6 @@ impl GeometryBuffer {
     render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
     render_pass.draw_indexed(0..self.get_indicies(), 0, 0..1);
   }
-  
 }
 
 /// a material, with a bunch of mesh data to boot
