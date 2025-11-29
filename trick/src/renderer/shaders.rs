@@ -36,6 +36,7 @@ impl WgpuVertex for ColoredVertex {
   };
 }
 
+#[derive(Clone)]
 pub struct Model {
   vertexes: Arc<[ColoredVertex]>,
   indicies: Arc<[u16]>,
@@ -125,14 +126,12 @@ impl PipelineManager {
 
     let test_model = Model::new(STATIC_TEST_MODEL, INDICES);
 
-    // just some test models, while loading support is developed.
-    let mut geometry: Vec<GeometryBuffer> = vec![
-      GeometryBuffer::new(&device.clone(), test_model)
-    ];
-
     let pipelines = load_integrated_pipelines(&device, surface_config);
     for pipeline in &pipelines {
-      pipeline.read();
+      let mut write_pipeline = pipeline.write().unwrap();
+      
+      let geometry = GeometryBuffer::new(&device, test_model.clone());
+      write_pipeline.geometry.push(RwLock::new(geometry));
     }
 
     Self {
@@ -146,6 +145,12 @@ impl PipelineManager {
     for pipeline in self.pipelines.iter() {
       let pipeline = pipeline.read().expect("FRICKKKKKKKKKK");
       render_pass.set_pipeline(&*&pipeline.pipeline);
+      for pipeline_geometry in (*pipeline.geometry).iter() {
+        // rendering isn't essential, the program wont go down because i need to render something lol
+        if let Ok(read_geometery) = pipeline_geometry.read() {
+          read_geometery.render_with_current_pipeline(render_pass);
+        }
+      }
     }
 
     Ok(())
@@ -187,7 +192,7 @@ impl GeometryBuffer {
     self.model.indicies.len() as u32
   }
 
-  pub fn render_with_current_pipeline(&self, render_pass: &mut wgpu::RenderPass) {
+  fn render_with_current_pipeline(&self, render_pass: &mut wgpu::RenderPass) {
     render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
     render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
     render_pass.draw_indexed(0..self.get_indicies(), 0, 0..1);
@@ -203,7 +208,7 @@ pub struct ShaderPipeline {
   pub layout: wgpu::PipelineLayout,
   pub bind_group_layouts: Vec<wgpu::BindGroupLayout>,
   // reference to the pool of geometry
-  pub geometry: RwLock<Vec<GeometryBuffer>>,
+  pub geometry: Vec<RwLock<GeometryBuffer>>,
 }
 
 impl ShaderPipeline {
@@ -250,7 +255,7 @@ impl ShaderPipeline {
 
     Self {
       // more added later, as more meshes are applied to the same material.
-      geometry: RwLock::new((Vec::new())),
+      geometry: Vec::new(),
 
       filename: shader_filename,
       module,
