@@ -1,7 +1,5 @@
 
-use trick::renderer::renderer::RenderRoutineInput;
-use trick::renderer::renderer::RenderRoutineOutput;
-use trick::task_routine::TaskRoutine;
+use trick::task_routine_prelude::*;
 fn test_routine(input: RenderRoutineInput) -> RenderRoutineOutput {
   println!("IM ALIVE!!!!!!!");
   RenderRoutineOutput::Good
