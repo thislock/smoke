@@ -1,5 +1,4 @@
 use std::{collections::HashMap, fs, path::Path, sync::Arc};
-use arc_swap::ArcSwap;
 use asset_manager::AssetManager;
 use std::sync::RwLock;
 use wgpu::util::DeviceExt;

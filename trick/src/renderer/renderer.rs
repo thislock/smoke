@@ -18,7 +18,7 @@ const RENDERER_TAGS: &'static [TaskTag] = &[];
 use crate::task_routine::TaskRoutine;
 
 pub struct RenderRoutineInput {
-
+  
 }
 pub enum RenderRoutineOutput {
   Good,
